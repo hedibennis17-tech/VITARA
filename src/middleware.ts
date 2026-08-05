@@ -12,6 +12,7 @@ const PUBLIC_API_ROUTES = [
 const PUBLIC_PAGES = [
   '/login',
   '/register',
+  '/patient',
   '/_next',
   '/favicon',
   '/public',
