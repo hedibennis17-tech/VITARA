@@ -1,0 +1,102 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --midnight: #070F1C;
+  --surface: #0D1B2E;
+  --surface-2: #112138;
+  --border: #1A2E47;
+  --border-2: #243D58;
+  --teal: #00C5D4;
+  --teal-dim: rgba(0, 197, 212, 0.12);
+  --teal-glow: rgba(0, 197, 212, 0.3);
+  --mint: #00E5A0;
+  --mint-dim: rgba(0, 229, 160, 0.1);
+  --text: #E8F0FA;
+  --text-muted: #5E7A96;
+  --text-dim: #3A5572;
+  --urgent: #FF4F4F;
+  --urgent-dim: rgba(255, 79, 79, 0.12);
+  --warn: #F9A826;
+  --warn-dim: rgba(249, 168, 38, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  background-color: var(--midnight);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--surface); }
+::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--teal); }
+
+/* Waveform animation */
+@keyframes waveform {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 1; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.animate-slide-in { animation: slide-in 0.3s ease forwards; }
+.animate-blink { animation: blink 1.5s ease-in-out infinite; }
+
+/* Vitara gradient */
+.vitara-gradient {
+  background: linear-gradient(135deg, var(--teal) 0%, var(--mint) 100%);
+}
+
+.vitara-text-gradient {
+  background: linear-gradient(135deg, var(--teal) 0%, var(--mint) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glass card */
+.glass-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+/* Active nav */
+.nav-active {
+  background: var(--teal-dim);
+  border-left: 2px solid var(--teal);
+  color: var(--teal);
+}
