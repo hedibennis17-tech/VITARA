@@ -167,7 +167,7 @@ export default function VitaraPatientApp(){
     const nh=[...hist,um];
     setHist(nh);setMsgs(p=>[...p,{role:'patient',text:txt}]);setInp('');setLoad(true);setAv('thinking');
     try{
-      const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:800,system:SYSTEM[lang]||SYSTEM.fr,messages:nh})});
+      const res=await fetch('/api/ai/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:800,system:SYSTEM[lang]||SYSTEM.fr,messages:nh})});
       const data=await res.json();
       const raw=(data.content?.[0]?.text||'{}').replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
       let parsed;try{parsed=JSON.parse(raw);}catch{parsed={speak:raw,intent:'info'};}
