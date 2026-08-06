@@ -1,52 +1,39 @@
 import { NextResponse } from 'next/server';
 
 export async function GET() {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  
-  // Test Anthropic API directement
-  let anthropicTest: Record<string, unknown> = { status: 'not tested' };
-  if (apiKey) {
+  const groqKey = process.env.GROQ_API_KEY;
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+
+  let groqTest: Record<string, unknown> = { status: 'not tested' };
+  if (groqKey) {
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
         body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 50,
-          messages: [{ role: 'user', content: 'Dis juste "OK"' }],
+          model: 'llama-3.3-70b-versatile',
+          max_tokens: 20,
+          messages: [{ role: 'user', content: 'Say OK only' }],
         }),
       });
-      const data = await res.json() as Record<string, unknown>;
+      const data = await res.json() as { choices?: Array<{message:{content:string}}>; error?: unknown };
       if (res.ok) {
-        anthropicTest = {
-          status: '✅ SUCCESS',
-          response: (data.content as Array<{text?: string}>)?.[0]?.text,
-          model: data.model,
-        };
+        groqTest = { status: '✅ SUCCESS', response: data.choices?.[0]?.message?.content, model: 'llama-3.3-70b-versatile' };
       } else {
-        anthropicTest = {
-          status: '❌ ERROR',
-          httpStatus: res.status,
-          error: data,
-        };
+        groqTest = { status: '❌ ERROR', httpStatus: res.status, error: data };
       }
-    } catch (e: unknown) {
-      anthropicTest = { status: '❌ FETCH ERROR', error: String(e) };
-    }
+    } catch (e) { groqTest = { status: '❌ FETCH ERROR', error: String(e) }; }
   }
 
   return NextResponse.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
     env: {
-      ANTHROPIC_API_KEY: apiKey ? `set (${apiKey.slice(0, 10)}...)` : 'MISSING ❌',
+      GROQ_API_KEY: groqKey ? `set (${groqKey.slice(0, 12)}...)` : 'MISSING ❌ — Ajoutez-la sur Vercel',
+      ANTHROPIC_API_KEY: anthropicKey ? `set (${anthropicKey.slice(0, 10)}...)` : 'not set',
       DATABASE_URL: !!process.env.DATABASE_URL ? 'set ✅' : 'not set (mode démo)',
       NODE_ENV: process.env.NODE_ENV,
     },
-    anthropicTest,
+    groqTest,
   });
 }

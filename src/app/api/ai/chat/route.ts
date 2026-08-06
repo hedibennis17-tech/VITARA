@@ -2,38 +2,49 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
   try {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: 'ANTHROPIC_API_KEY manquante', code: 'NO_API_KEY' }, { status: 500 });
+      return NextResponse.json({ error: 'GROQ_API_KEY manquante sur Vercel', code: 'NO_API_KEY' }, { status: 500 });
     }
 
-    const body = await req.json() as { messages: unknown[]; system: string; model?: string; max_tokens?: number };
-    const { messages, system, model = 'claude-haiku-4-5-20251001', max_tokens = 600 } = body;
+    const body = await req.json() as { messages: {role:string;content:string}[]; system?: string; max_tokens?: number };
+    const { messages, system, max_tokens = 600 } = body;
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    // Groq utilise le format OpenAI — system = premier message
+    const messagesWithSystem = system
+      ? [{ role: 'system', content: system }, ...messages]
+      : messages;
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
+        'Authorization': `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({ model, max_tokens, system, messages }),
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        max_tokens,
+        messages: messagesWithSystem,
+        temperature: 0.7,
+      }),
     });
 
-    const data = await response.json();
+    const data = await response.json() as { choices?: Array<{message:{content:string}}>; error?: unknown };
 
     if (!response.ok) {
-      console.error('[AI Chat] Anthropic error:', response.status, JSON.stringify(data));
-      return NextResponse.json({
-        error: `Anthropic API error ${response.status}`,
-        details: data,
-        code: 'ANTHROPIC_ERROR'
-      }, { status: response.status });
+      console.error('[AI Chat] Groq error:', response.status, JSON.stringify(data));
+      return NextResponse.json({ error: `Groq error ${response.status}`, details: data, code: 'GROQ_ERROR' }, { status: response.status });
     }
 
-    return NextResponse.json(data);
+    // Convertir la réponse Groq → format Anthropic (pour compatibilité patient app)
+    const text = data.choices?.[0]?.message?.content || '';
+    return NextResponse.json({
+      content: [{ type: 'text', text }],
+      model: 'llama-3.3-70b-versatile',
+    });
+
   } catch (err) {
-    console.error('[AI Chat] Server error:', err);
+    console.error('[AI Chat]', err);
     return NextResponse.json({ error: String(err), code: 'SERVER_ERROR' }, { status: 500 });
   }
 }
