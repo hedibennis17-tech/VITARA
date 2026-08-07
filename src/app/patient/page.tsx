@@ -179,41 +179,56 @@ export default function PatientPage() {
     if (!txt.trim() || load) return;
     synthRef.current?.cancel();
     setSlots(null); setSel(null);
-    const currentHist = histRef.current;
     const currentLang = langRef.current;
+
+    // Ajouter le message user à l'historique complet
     const um = { role: 'user', content: txt };
-    const nh = [...currentHist, um];
-    setHist(nh); histRef.current = nh;
+    const fullHist = [...histRef.current, um];
+    setHist(fullHist); histRef.current = fullHist;
     setMsgs(p => [...p, { role: 'patient', text: txt }]);
     setInp(''); setLoad(true); setVState('thinking');
+
     try {
+      // Garde-fou: max 10 messages → évite de dépasser la context window Groq
+      const trimmed = fullHist.slice(-10);
+      const safeHist = trimmed[0]?.role !== 'user' ? trimmed.slice(1) : trimmed;
+
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: nh, language: currentLang, max_tokens: 800 }),
+        body: JSON.stringify({ messages: safeHist, language: currentLang, max_tokens: 600 }),
       });
-      if (!res.ok) {
-        const e = await res.json() as any;
-        const m = e.code === 'NO_API_KEY' ? '⚠️ Clé GROQ_API_KEY manquante sur Vercel' : e.error || `Erreur ${res.status}`;
-        setMsgs(p => [...p, { role: 'ai', text: m }]); setVState('idle'); return;
-      }
-      const data = await res.json();
+
+      const data = await res.json() as any;
       const raw = (data.content?.[0]?.text || '{}')
         .replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
       let parsed: any;
       try { parsed = JSON.parse(raw); } catch { parsed = { speak: raw, intent: 'info' }; }
-      const aiTxt = parsed.speak || (currentLang === 'ar' ? 'أنا هنا.' : currentLang === 'en' ? "I'm here." : 'Je vous écoute.');
-      const newH = [...nh, { role: 'assistant', content: aiTxt }];
+
+      if (data.code === 'NO_API_KEY') {
+        setMsgs(p => [...p, { role: 'ai', text: '⚠️ Clé GROQ_API_KEY manquante sur Vercel' }]);
+        setVState('idle'); return;
+      }
+
+      const aiTxt = parsed.speak
+        || (currentLang === 'ar' ? 'أنا هنا.' : currentLang === 'en' ? "I'm here." : 'Je vous écoute.');
+
+      const newH = [...fullHist, { role: 'assistant', content: aiTxt }];
       setHist(newH); histRef.current = newH;
       setMsgs(p => [...p, { role: 'ai', text: aiTxt }]);
+
       if (parsed.slots) setSlots(parsed.slots);
       if (parsed.booking) { setBooking(parsed.booking); setTimeout(() => setScreen('done'), 900); }
       setVState(parsed.intent === 'emergency' ? 'idle' : 'speaking');
       speak(aiTxt);
+
     } catch (e: any) {
-      setMsgs(p => [...p, { role: 'ai', text: '⚠️ ' + (e.message || 'Erreur réseau') }]);
+      setMsgs(p => [...p, { role: 'ai', text: '⚠️ ' + (e.message || 'Erreur réseau — réessayez') }]);
       setVState('idle');
-    } finally { setLoad(false); }
+    } finally {
+      setLoad(false);
+    }
   }, [load, speak]);
 
   // ── Micro : Web Speech API + fallback Whisper ────────────
