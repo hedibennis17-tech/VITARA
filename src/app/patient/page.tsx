@@ -309,77 +309,94 @@ export default function PatientPage() {
 
   // ── HOME ─────────────────────────────────────────────────
   if (screen === 'home') return (
-    <div style={{minHeight:'100vh',background:T.bg,fontFamily:"'Inter',sans-serif",color:T.text,display:'flex',flexDirection:'column',maxWidth:420,margin:'0 auto',overflow:'hidden'}}>
+    <div style={{height:'100vh',background:T.bg,fontFamily:"'Inter',sans-serif",color:T.text,display:'flex',flexDirection:'column',maxWidth:420,margin:'0 auto'}}>
+
       {/* Header */}
-      <div style={{padding:'14px 18px 10px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-        <div style={{display:'flex',alignItems:'center',gap:10}}>
-          <div style={{width:36,height:36,background:`linear-gradient(135deg,${T.teal},${T.purple})`,borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:17}}>✚</div>
+      <div style={{padding:'12px 18px 8px',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0,borderBottom:`1px solid ${T.border}`}}>
+        <div style={{display:'flex',alignItems:'center',gap:9}}>
+          <div style={{width:34,height:34,background:`linear-gradient(135deg,${T.teal},${T.purple})`,borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16}}>✚</div>
           <div>
-            <div style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:15,background:`linear-gradient(135deg,${T.teal},${T.purple})`,WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>VITARA</div>
-            <div style={{fontSize:8,color:T.muted,letterSpacing:'.1em',textTransform:'uppercase'}}>CLINIQUE SANTÉ MONTRÉAL</div>
+            <div style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:14,background:`linear-gradient(135deg,${T.teal},${T.purple})`,WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>VITARA</div>
+            <div style={{fontSize:7,color:T.muted,letterSpacing:'.12em',textTransform:'uppercase'}}>CLINIQUE SANTÉ MONTRÉAL</div>
           </div>
         </div>
-        <div style={{display:'flex',gap:7}}>
-          <button onClick={()=>setTheme(t=>t==='dark'?'light':'dark')} style={{padding:'5px 10px',background:T.glass,border:`1px solid ${T.border}`,borderRadius:20,fontSize:11,color:T.text,cursor:'pointer',backdropFilter:'blur(8px)'}}>
-            {theme==='dark'?'☀️ Clair':'🌙 Sombre'}
+        <div style={{display:'flex',gap:6}}>
+          <button onClick={()=>setTheme(t=>t==='dark'?'light':'dark')} style={{padding:'4px 9px',background:T.glass,border:`1px solid ${T.border}`,borderRadius:18,fontSize:10,color:T.text,cursor:'pointer',backdropFilter:'blur(8px)'}}>
+            {theme==='dark'?'☀️':'🌙'}
           </button>
-          <div style={{width:34,height:34,background:T.glass,border:`1px solid ${T.border}`,borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(8px)',position:'relative',cursor:'pointer'}}>
-            🔔<div style={{position:'absolute',top:7,right:7,width:7,height:7,background:T.teal,borderRadius:'50%'}}/>
+          <div style={{width:32,height:32,background:T.glass,border:`1px solid ${T.border}`,borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',position:'relative',cursor:'pointer',backdropFilter:'blur(8px)'}}>
+            🔔<div style={{position:'absolute',top:6,right:6,width:6,height:6,background:T.teal,borderRadius:'50%'}}/>
           </div>
         </div>
       </div>
 
-      {/* Avatar hero */}
-      <div style={{padding:'0 18px',position:'relative'}}>
-        <div style={{animation:'fadeUp .4s ease',marginBottom:10}}>
-          <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:25,fontWeight:700,color:T.teal,lineHeight:1}}>Bonjour,</div>
-          <div style={{fontSize:14,color:T.text,opacity:.85,marginTop:2}}>Comment puis-je vous aider aujourd'hui ?</div>
+      {/* Contenu scrollable */}
+      <div style={{flex:1,overflowY:'auto',paddingBottom:72}}>
+
+        {/* Greeting + Avatar */}
+        <div style={{padding:'10px 18px 0'}}>
+          <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:22,fontWeight:700,color:T.teal}}>Bonjour,</div>
+          <div style={{fontSize:13,color:T.text,opacity:.8,marginTop:1}}>Comment puis-je vous aider aujourd'hui ?</div>
         </div>
-        <div style={{position:'relative',display:'flex',justifyContent:'center',minHeight:240}}>
-          <div style={{position:'absolute',top:'5%',width:180,height:180,borderRadius:'50%',background:`radial-gradient(circle,${agent.color}20 0%,transparent 70%)`}}/>
-          <ECG color={agent.color} op={.2}/>
+
+        {/* Avatar hero */}
+        <div style={{position:'relative',display:'flex',justifyContent:'center',alignItems:'center',height:200,margin:'4px 0 0'}}>
+          <div style={{position:'absolute',width:150,height:150,borderRadius:'50%',background:`radial-gradient(circle,${agent.color}18 0%,transparent 70%)`}}/>
+          <ECG color={agent.color} op={.15}/>
           <div style={{position:'relative',zIndex:2,animation:'float 4s ease-in-out infinite'}}>
-            {mounted && <Avatar id={agent.id} size={185} talking={vState==='speaking'} color={agent.color}/>}
-            {!mounted && <div style={{width:185,height:230,display:'flex',alignItems:'center',justifyContent:'center',fontSize:60}}>{agent.badge}</div>}
+            {mounted
+              ? <Avatar id={agent.id} size={155} talking={vState==='speaking'} color={agent.color}/>
+              : <div style={{width:155,height:195,display:'flex',alignItems:'center',justifyContent:'center',fontSize:50}}>{agent.badge}</div>
+            }
           </div>
         </div>
+
         {/* Status bar */}
-        <div style={{padding:'9px 14px',background:T.glass,border:`1px solid ${T.border}`,borderRadius:13,backdropFilter:'blur(12px)',display:'flex',alignItems:'center',gap:10,marginTop:4}}>
-          <div style={{width:7,height:7,borderRadius:'50%',background:T.mint,boxShadow:`0 0 8px ${T.mint}`,animation:'glow 1.5s ease-in-out infinite'}}/>
-          <span style={{fontSize:12,color:T.text,fontWeight:500,flex:1}}>Je vous écoute…</span>
-          <Bars active={false} color={agent.color} n={14}/>
-        </div>
-      </div>
-
-      {/* Agent selector */}
-      <div style={{padding:'12px 18px 0'}}>
-        <button onClick={()=>setScreen('agents')} style={{width:'100%',padding:'13px 15px',background:T.glass,border:`1px solid ${T.border}`,borderRadius:15,backdropFilter:'blur(12px)',display:'flex',alignItems:'center',gap:12,cursor:'pointer',textAlign:'left'}}>
-          <div style={{display:'flex'}}>{AGENTS.map((a,i)=><div key={a.id} style={{width:26,height:26,borderRadius:'50%',background:`linear-gradient(135deg,${a.color},${a.color}80)`,border:`2px solid ${T.bg}`,marginLeft:i?-7:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12}}>{a.badge}</div>)}</div>
-          <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:600,color:T.text,fontFamily:"'Space Grotesk',sans-serif"}}>Choisir votre agent</div>
-            <div style={{fontSize:10,color:T.muted}}>4 assistants disponibles · FR · EN · AR</div>
+        <div style={{padding:'0 18px'}}>
+          <div style={{padding:'8px 13px',background:T.glass,border:`1px solid ${T.border}`,borderRadius:11,backdropFilter:'blur(12px)',display:'flex',alignItems:'center',gap:9}}>
+            <div style={{width:6,height:6,borderRadius:'50%',background:T.mint,boxShadow:`0 0 7px ${T.mint}`,animation:'glow 1.5s ease-in-out infinite',flexShrink:0}}/>
+            <span style={{fontSize:11,color:T.text,fontWeight:500,flex:1}}>{agent.name} · Je vous écoute…</span>
+            <Bars active={vState!=='idle'} color={agent.color} n={12}/>
           </div>
-          <div style={{width:26,height:26,borderRadius:'50%',background:`linear-gradient(135deg,${T.teal},${T.purple})`,display:'flex',alignItems:'center',justifyContent:'center',color:'white',fontSize:13}}>→</div>
-        </button>
-      </div>
+        </div>
 
-      {/* Quick access */}
-      <div style={{padding:'12px 18px 0'}}>
-        <div style={{fontSize:10,fontWeight:600,color:T.muted,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:9}}>Accès rapide</div>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:7}}>
-          {QUICK.map(q=>(
-            <button key={q.l} onClick={()=>{ greeted.current=false; startSession(agent,'fr'); setTimeout(()=>sendMsg(q.m),600); }} style={{padding:'11px 13px',background:T.glass,border:`1px solid ${T.border}`,borderRadius:11,backdropFilter:'blur(8px)',cursor:'pointer',textAlign:'left'}}>
-              <div style={{fontSize:17,marginBottom:4}}>{q.i}</div>
-              <div style={{fontSize:11,fontWeight:600,color:T.text,fontFamily:"'Space Grotesk',sans-serif"}}>{q.l}</div>
-            </button>
-          ))}
+        {/* Agent selector */}
+        <div style={{padding:'9px 18px 0'}}>
+          <button onClick={()=>setScreen('agents')} style={{width:'100%',padding:'11px 14px',background:T.glass,border:`1px solid ${T.border}`,borderRadius:12,backdropFilter:'blur(12px)',display:'flex',alignItems:'center',gap:10,cursor:'pointer',textAlign:'left'}}>
+            <div style={{display:'flex'}}>{AGENTS.map((a,i)=>(
+              <div key={a.id} style={{width:23,height:23,borderRadius:'50%',background:`linear-gradient(135deg,${a.color},${a.color}80)`,border:`2px solid ${T.bg}`,marginLeft:i?-6:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10}}>{a.badge}</div>
+            ))}</div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:12,fontWeight:600,color:T.text,fontFamily:"'Space Grotesk',sans-serif"}}>Choisir votre agent</div>
+              <div style={{fontSize:10,color:T.muted,marginTop:1}}>Houda · Said · Hayet · Alain · FR EN AR</div>
+            </div>
+            <div style={{width:23,height:23,borderRadius:'50%',background:`linear-gradient(135deg,${T.teal},${T.purple})`,display:'flex',alignItems:'center',justifyContent:'center',color:'white',fontSize:11}}>→</div>
+          </button>
+        </div>
+
+        {/* Accès rapide */}
+        <div style={{padding:'9px 18px 0'}}>
+          <div style={{fontSize:10,fontWeight:600,color:T.muted,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:7}}>Accès rapide</div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6}}>
+            {QUICK.map(q=>(
+              <button key={q.l}
+                onClick={()=>{ greeted.current=false; startSession(agent,'fr'); setTimeout(()=>sendMsg(q.m),700); }}
+                style={{padding:'10px 8px',background:T.glass,border:`1px solid ${T.border}`,borderRadius:10,backdropFilter:'blur(8px)',cursor:'pointer',textAlign:'left'}}>
+                <div style={{fontSize:16,marginBottom:3}}>{q.i}</div>
+                <div style={{fontSize:10,fontWeight:600,color:T.text,lineHeight:1.2}}>{q.l}</div>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div style={{height:80}}/>
-      <NavBar active="home" T={T} onMic={()=>startSession(agent,'fr')} onNav={v=>{ if(v==='rdv'){greeted.current=false;startSession(agent,'fr');}}} inChat={false}/>
+      <NavBar active="home" T={T}
+        onMic={()=>{ greeted.current=false; startSession(agent,'fr'); }}
+        onNav={v=>{ if(v==='rdv'){ greeted.current=false; startSession(agent,'fr'); }}}
+        inChat={false}/>
     </div>
   );
+
 
   // ── AGENTS ────────────────────────────────────────────────
   if (screen === 'agents') return (
