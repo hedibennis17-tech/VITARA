@@ -27,6 +27,7 @@ const CSS = `
 @keyframes blink{0%,85%,100%{transform:scaleY(1)}91%{transform:scaleY(0.05)}}
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
 @keyframes ring{0%{transform:scale(.92);opacity:.6}100%{transform:scale(1.65);opacity:0}}
+@keyframes spin{to{transform:rotate(360deg)}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes slideIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
 @keyframes dot{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}}
