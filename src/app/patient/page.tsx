@@ -34,49 +34,71 @@ const CSS = `
 @keyframes spin{to{transform:rotate(360deg)}}`;
 
 // ── AVATAR SVG ────────────────────────────────────────────────
+// ── VRAIES PHOTOS agents ─────────────────────────────────────
+const AGENT_PHOTO: Record<string,string> = {
+  houda: '/agents/houda.png',
+  said:  '/agents/said.png',
+  alain: '/agents/alain.png',
+  hayet: '/agents/hayet.jpg',
+};
+const AGENT_POS: Record<string,string> = {
+  houda: 'center 20%',
+  said:  'center 10%',
+  alain: 'center 12%',
+  hayet: 'center 18%',
+};
+
 function Avatar({ id, size=200, talking=false, color='#00D7C8' }: any) {
-  const cfg: Record<string,any> = {
-    houda: { skin:'#C8956C',hijab:'#9B7EC8',hijab2:'#7C5BB5',coat:'#2563EB',coatL:'#3B82F6',lips:'#C07070',f:'hijab' },
-    said:  { skin:'#A07050',hair:'#1C0F05',coat:'#1E3A8A',coatL:'#2563EB',beard:'#2D1A08',lips:'#8B5050',f:'male' },
-    hayet: { skin:'#D4A574',hair:'#5C3317',hair2:'#7A4929',coat:'#6D28D9',coatL:'#7C3AED',lips:'#C06080',f:'female' },
-    alain: { skin:'#C4A882',hair:'#9CA3AF',hair2:'#6B7280',coat:'#1F2937',coatL:'#374151',lips:'#8B6050',f:'male-old' },
-  };
-  const c = cfg[id] || cfg.houda;
-  const eX = c.f==='hijab'?85:83;  const eX2 = c.f==='hijab'?115:117;
-  const eY = c.f==='male-old'?108:106;
+  const src = AGENT_PHOTO[id] || AGENT_PHOTO.houda;
+  const pos = AGENT_POS[id]  || 'center center';
+  const border = 3;
+  const inner = size - border * 2;
+
   return (
-    <svg width={size} height={size*1.25} viewBox="0 0 200 250" style={{filter:`drop-shadow(0 6px 24px ${color}28)`}}>
-      <defs>
-        <radialGradient id={`gbg-${id}`} cx="50%" cy="60%" r="55%"><stop offset="0%" stopColor={color} stopOpacity=".15"/><stop offset="100%" stopColor="transparent"/></radialGradient>
-        <radialGradient id={`gsk-${id}`} cx="40%" cy="35%" r="60%"><stop offset="0%" stopColor={c.skin} stopOpacity=".95"/><stop offset="100%" stopColor={c.skin} stopOpacity=".82"/></radialGradient>
-      </defs>
-      <ellipse cx="100" cy="135" rx="92" ry="110" fill={`url(#gbg-${id})`}/>
-      <path d="M20 250 Q20 185 50 175 Q75 168 100 170 Q125 168 150 175 Q180 185 180 250Z" fill={c.coat}/>
-      <path d="M85 175 L100 215 L115 175 Q100 168 85 175Z" fill="white" opacity=".88"/>
-      <path d="M50 180 Q35 200 30 250 L170 250 Q165 200 150 180 Q125 172 100 174 Q75 172 50 180Z" fill={c.coatL} opacity=".28"/>
-      <circle cx="86" cy="198" r="5" fill="none" stroke="#CBD5E1" strokeWidth="1.8"/>
-      <path d="M86 203 Q86 217 100 221 Q114 225 114 198" fill="none" stroke="#CBD5E1" strokeWidth="1.6" strokeLinecap="round"/>
-      <ellipse cx="100" cy="165" rx="17" ry="20" fill={`url(#gsk-${id})`}/>
-      <ellipse cx="100" cy="100" rx="54" ry="62" fill={`url(#gsk-${id})`}/>
-      {c.f==='hijab'&&<><ellipse cx="100" cy="86" rx="58" ry="66" fill={c.hijab}/><ellipse cx="100" cy="112" rx="42" ry="50" fill={`url(#gsk-${id})`}/><path d="M58 125 Q32 180 52 248 L148 248 Q168 180 142 125Z" fill={c.hijab}/><ellipse cx="100" cy="58" rx="34" ry="17" fill={c.hijab2} opacity=".5"/></>}
-      {c.f==='female'&&<><ellipse cx="100" cy="58" rx="57" ry="38" fill={c.hair}/>{[55,68,82,96,112,127,140].map((x:number,i:number)=><ellipse key={i} cx={x} cy="54" rx="9" ry="12" fill={c.hair2} opacity=".9"/>)}<ellipse cx="48" cy="95" rx="15" ry="28" fill={c.hair} opacity=".9"/><ellipse cx="152" cy="95" rx="15" ry="28" fill={c.hair} opacity=".9"/></>}
-      {c.f==='male'&&<><ellipse cx="100" cy="56" rx="56" ry="33" fill={c.hair}/><rect x="44" y="60" width="14" height="48" rx="7" fill={c.hair}/><rect x="142" y="60" width="14" height="48" rx="7" fill={c.hair}/><ellipse cx="100" cy="152" rx="30" ry="9" fill={c.beard} opacity=".5"/></>}
-      {c.f==='male-old'&&<><ellipse cx="100" cy="58" rx="55" ry="32" fill={c.hair}/><rect x="44" y="62" width="13" height="48" rx="6" fill={c.hair}/><rect x="143" y="62" width="13" height="48" rx="6" fill={c.hair}/><ellipse cx="82" cy="108" rx="14" ry="11" fill="none" stroke="#94A3B8" strokeWidth="1.8"/><ellipse cx="118" cy="108" rx="14" ry="11" fill="none" stroke="#94A3B8" strokeWidth="1.8"/><line x1="96" y1="108" x2="104" y2="108" stroke="#94A3B8" strokeWidth="1.8"/><line x1="44" y1="106" x2="68" y2="107" stroke="#94A3B8" strokeWidth="1.8"/><line x1="132" y1="107" x2="156" y2="106" stroke="#94A3B8" strokeWidth="1.8"/></>}
-      <path d={`M${eX-11} ${eY-16} Q${eX-3} ${eY-20} ${eX+3} ${eY-16}`} stroke="#4A3020" strokeWidth="2" fill="none" strokeLinecap="round"/>
-      <path d={`M${eX2-3} ${eY-16} Q${eX2+4} ${eY-20} ${eX2+11} ${eY-16}`} stroke="#4A3020" strokeWidth="2" fill="none" strokeLinecap="round"/>
-      <ellipse cx={eX} cy={eY} rx="10" ry="8" fill="white"/>
-      <ellipse cx={eX2} cy={eY} rx="10" ry="8" fill="white"/>
-      <ellipse cx={eX} cy={eY} rx="5.5" ry="6" fill="#2D4A8A" style={{animation:'blink 4.5s ease-in-out infinite'}}/>
-      <ellipse cx={eX2} cy={eY} rx="5.5" ry="6" fill="#2D4A8A" style={{animation:'blink 4.5s ease-in-out infinite',animationDelay:'.2s'}}/>
-      <circle cx={eX} cy={eY} r="3" fill="#0F1A2A"/><circle cx={eX2} cy={eY} r="3" fill="#0F1A2A"/>
-      <circle cx={eX+2} cy={eY-2} r="1.8" fill="white"/><circle cx={eX2+2} cy={eY-2} r="1.8" fill="white"/>
-      {talking
-        ? <><ellipse cx="100" cy="144" rx="13" ry="8" fill="#6B2020"/><ellipse cx="100" cy="144" rx="10" ry="5" fill="#8B3030"/></>
-        : <path d="M88 141 Q100 149 112 141" stroke={c.lips} strokeWidth="2" fill="none" strokeLinecap="round"/>}
-    </svg>
+    <div style={{ position:'relative', width:size, height:size, flexShrink:0 }}>
+      {/* Anneaux pulsants quand parle */}
+      {talking && [1,2].map(i => (
+        <div key={i} style={{
+          position:'absolute',
+          top:-(i*11), left:-(i*11),
+          width:size+(i*22), height:size+(i*22),
+          borderRadius:'50%',
+          border:`1.5px solid ${color}`,
+          opacity:.5,
+          animation:`ring ${1.8+i*.35}s ease-out infinite`,
+          animationDelay:`${i*.3}s`,
+          pointerEvents:'none',
+        }}/>
+      ))}
+      {/* Contour coloré — tourne quand parle */}
+      <div style={{
+        width:size, height:size, borderRadius:'50%',
+        background:`conic-gradient(${color} 0%, ${color}44 45%, ${color} 100%)`,
+        padding:border, boxSizing:'border-box',
+        animation: talking ? 'spin 3s linear infinite' : 'none',
+        boxShadow:`0 0 ${talking?22:10}px ${color}${talking?'80':'38'}`,
+        transition:'box-shadow .4s',
+      }}>
+        <div style={{ width:inner, height:inner, borderRadius:'50%', overflow:'hidden', background:'#07111F' }}>
+          <img src={src} alt={id} style={{
+            width:'100%', height:'100%', objectFit:'cover', objectPosition:pos, display:'block',
+            filter: talking ? `brightness(1.08)` : 'brightness(1)',
+            transition:'filter .3s',
+          }}/>
+        </div>
+      </div>
+      {/* Point vert "parle" */}
+      {talking && (
+        <div style={{
+          position:'absolute', bottom:4, right:4,
+          width:13, height:13, borderRadius:'50%',
+          background:color, border:'2px solid #07111F',
+          animation:'glow 1s ease-in-out infinite',
+        }}/>
+      )}
+    </div>
   );
 }
-
 function Bars({ active=false, color='#00D7C8', n=16 }:any) {
   return <div style={{display:'flex',alignItems:'center',gap:2.5,height:26}}>{Array.from({length:n}).map((_,i)=><div key={i} style={{width:3,minHeight:'12%',borderRadius:2,background:`linear-gradient(to top,${color},${color}80)`,animation:active?`wave ${.2+(i%5)*.07}s ease-in-out infinite alternate`:'none',height:active?undefined:`${16+(i%4)*8}%`,animationDelay:`${i*.04}s`,opacity:active?1:.3}}/> )}</div>;
 }
@@ -278,9 +300,11 @@ export default function PatientPage() {
         : l === 'en'
         ? `Hello! I'm ${a.name}, your medical assistant. Are you a new or existing patient?`
         : `مرحباً! أنا ${a.name}، مساعدتك الطبية. هل أنت مريض جديد؟`;
+      // BUG FIX: le greeting va dans msgs (affichage) mais PAS dans hist
+      // Groq rejette si messages[0].role === 'assistant'
+      // hist reste vide → le premier appel API aura messages[0].role === 'user' ✓
       setMsgs([{ role: 'ai', text: g }]);
-      const h = [{ role: 'assistant', content: g }];
-      setHist(h); histRef.current = h;
+      setHist([]); histRef.current = [];
       setTimeout(() => speak(g), 500);
     }
   }, [speak]);
@@ -344,10 +368,7 @@ export default function PatientPage() {
           <div style={{position:'absolute',width:150,height:150,borderRadius:'50%',background:`radial-gradient(circle,${agent.color}18 0%,transparent 70%)`}}/>
           <ECG color={agent.color} op={.15}/>
           <div style={{position:'relative',zIndex:2,animation:'float 4s ease-in-out infinite'}}>
-            {mounted
-              ? <Avatar id={agent.id} size={155} talking={vState==='speaking'} color={agent.color}/>
-              : <div style={{width:155,height:195,display:'flex',alignItems:'center',justifyContent:'center',fontSize:50}}>{agent.badge}</div>
-            }
+            <Avatar id={agent.id} size={155} talking={vState==='speaking'} color={agent.color}/>
           </div>
         </div>
 
@@ -427,8 +448,7 @@ export default function PatientPage() {
           <div style={{background:T.glass,border:`1px solid ${curAgent.color}35`,borderRadius:22,backdropFilter:'blur(14px)',overflow:'hidden',marginBottom:12,position:'relative'}}>
             <div style={{position:'absolute',inset:0,background:`radial-gradient(circle at 50% 20%,${curAgent.color}10,transparent 70%)`}}/>
             <div style={{display:'flex',justifyContent:'center',padding:'14px 0 0',position:'relative'}}>
-              {mounted && <Avatar id={curAgent.id} size={155} talking={false} color={curAgent.color}/>}
-              {!mounted && <div style={{width:155,height:195,display:'flex',alignItems:'center',justifyContent:'center',fontSize:60}}>{curAgent.badge}</div>}
+              <Avatar id={curAgent.id} size={155} talking={false} color={curAgent.color}/>
             </div>
             <div style={{padding:'6px 16px 16px',textAlign:'center',position:'relative'}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:7,marginBottom:3}}>
