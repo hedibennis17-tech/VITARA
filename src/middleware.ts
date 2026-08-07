@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAccessToken, extractBearerToken } from '@/lib/auth/jwt';
 
 const PUB_API  = ['/api/auth/login', '/api/auth/register', '/api/auth/refresh', '/api/ai/chat', '/api/diagnostic', '/api/voice', '/api/debug'];
-const PUB_PAGE = ['/login', '/patient', '/register', '/_next', '/favicon'];
+const PUB_PAGE = ['/login', '/patient', '/patient-portal', '/register', '/_next', '/favicon'];
 
 export async function middleware(req: NextRequest): Promise<NextResponse> {
   const { pathname } = req.nextUrl;

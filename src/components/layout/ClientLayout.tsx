@@ -2,15 +2,18 @@
 import { usePathname } from 'next/navigation';
 import Sidebar from './Sidebar';
 
+// Routes standalone (sans sidebar admin)
+const STANDALONE = ['/patient', '/patient-portal'];
+
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // /patient = app mobile autonome, SANS sidebar admin
-  if (pathname === '/patient') {
+  // Apps standalone : pas de sidebar admin
+  if (STANDALONE.some(p => pathname === p || pathname.startsWith(p + '/'))) {
     return <>{children}</>;
   }
 
-  // Toutes les autres routes = dashboard admin AVEC sidebar
+  // Dashboard admin
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       <Sidebar />
