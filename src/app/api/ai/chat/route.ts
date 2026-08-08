@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
       gender?:           'female'|'male';
       conversation_state?: Partial<ConversationState>;
     };
-    const { messages, language = 'fr', max_tokens = 500, agent = 'houda', gender = 'female', conversation_state } = body;
+    const { messages, language = 'fr', max_tokens = 300, agent = 'houda', gender = 'female', conversation_state } = body;
 
     const trimmed      = messages.slice(-10);
     const safeMessages = trimmed[0]?.role !== 'user' ? trimmed.slice(1) : trimmed;

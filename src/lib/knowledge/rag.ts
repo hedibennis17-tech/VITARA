@@ -79,7 +79,7 @@ export function retrieveContext(msg: string, hist: { role: string; content: stri
   return { scenarios: final, context: parts.length ? '\n\n' + parts.join('\n\n') : '', detectedDept: dept, detectedLang: lang };
 }
 
-// ── System Prompt v4.1 — Ultra-direct, llama-3.1-8b-instant optimisé ───
+// ── System Prompt v4.2 — State Machine explicite ———————————————————─
 export function buildSystemPrompt(
   lang:        string,
   ragContext:  string,
@@ -87,112 +87,100 @@ export function buildSystemPrompt(
   gender:     'female' | 'male' = 'female',
   convState?: any
 ): string {
-  const gmf    = GMF_DOCTORS.map(d => d.name).join(', ');
-  const physio = PHYSIO.map(p => p.name).join(', ');
+  const gmf    = GMF_DOCTORS.map(d => d.name).join(' | ');
+  const physio = PHYSIO.map(p => p.name).join(' | ');
   const date   = new Date().toLocaleDateString('fr-CA', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
   const name   = agentId.charAt(0).toUpperCase() + agentId.slice(1);
   const isMale = gender === 'male';
-  const adj    = isMale ? 'votre assistant médical' : 'votre assistante médicale';
+  const adj    = isMale ? 'assistant médical' : 'assistante médicale';
 
-  // Résumé de l'état de conversation (champs déjà connus)
-  const stateLines: string[] = [];
+  // Construire le bloc d'état lisible
+  const st: Record<string,string> = {};
   if (convState) {
-    const fields = ['patient_status','full_name','date_of_birth','phone','email','ramq_number',
-      'requested_service','requested_practitioner','accident_type','cnesst_claim_number',
-      'saaq_claim_number','reason','body_part'];
-    for (const k of fields) {
+    for (const k of ['patient_status','full_name','date_of_birth','phone','email','ramq_number',
+      'address','requested_service','requested_practitioner','reason','body_part','symptoms',
+      'accident_type','cnesst_claim_number','saaq_claim_number','urgency_level']) {
       const f = convState[k];
-      if (typeof f === 'string' && f) stateLines.push(`${k}="${f}" [CONFIRMED]`);
-      else if (f?.value) stateLines.push(`${k}="${f.value}" [${f.status||'CONFIRMED'}]`);
-      else if (f?.status === 'SKIPPED') stateLines.push(`${k}=null [SKIPPED]`);
+      if (typeof f === 'string' && f) st[k] = `"${f}" CONFIRMED`;
+      else if (f?.value && f.status !== 'UNKNOWN') st[k] = `"${f.value}" ${f.status}`;
+      else if (f?.status === 'SKIPPED') st[k] = `null SKIPPED`;
     }
   }
-  const stateCtx = stateLines.length
-    ? `\n\nINFOS DÉJÀ CONNUES — NE PAS REDEMANDER:\n${stateLines.join('\n')}`
-    : '';
+  const stateBlock = Object.keys(st).length
+    ? Object.entries(st).map(([k,v]) => `  ${k}: ${v}`).join('\n')
+    : '  (vide — début de conversation)';
 
-  const fr = `Tu es ${name}, ${adj} à la Clinique Médicale JOLIBOURG de Laval. Date: ${date}.
-GENRE: ${isMale ? 'MASCULIN — utilise "assistant", "prêt"' : 'FÉMININ — utilise "assistante", "prête"'}
+  const fr = `Tu es ${name}, ${adj} — Clinique Médicale JOLIBOURG de Laval. ${date}.
+Genre: ${isMale ? 'MASCULIN' : 'FÉMININ'}
 
-RÈGLE ABSOLUE: Réponds en JSON pur UNIQUEMENT. Aucun texte avant/après.
-FORMAT: {"speak":"ta réponse vocale","intent":"...","state":{...},"slots":null,"booking":null}
+► FORMAT JSON OBLIGATOIRE (aucun texte avant/après):
+{"speak":"ta réponse","intent":"...","state":{champs mis à jour},"slots":null,"booking":null}
 
-INTENTS: welcome|identify|intake|service|diagnostic|accident|slots|confirm|emergency|done|error
-${stateCtx}
+┌────────────── ÉTAT ACTUEL ──────────────┐
+${stateBlock}
+└──────────────────────────────────────────┘
+CONFIRMED = NE JAMAIS REDEMANDER. SKIPPED = NE JAMAIS INSISTER.
 
-RÈGLES CRITIQUES (à respecter dans CET ORDRE):
+► MACHINE À ÉTATS — quelle étape faire MAINTENANT:
 
-1. LIS les INFOS DÉJÀ CONNUES ci-dessus AVANT de répondre
-2. Si une info est [CONFIRMED] ou [SKIPPED] → NE JAMAIS redemander
-3. EXTRAIS TOUTES les infos du message patient en une seule fois
-4. POSE UNE SEULE question — la prochaine info manquante seulement
+Étape 1 — IDENTIFICATION (si manquant):
+  patient_status manquant → "Nouveau patient ou déjà un dossier chez nous ?"
+  full_name manquant → "Pouvez-vous me confirmer votre nom complet ?"
+  phone manquant → "Quel est votre numéro de téléphone ?"
+  email manquant → "Quelle est votre adresse courriel ?"
+  ramq_number manquant → "Quel est votre numéro d'assurance maladie ?"
 
-ORDRE DE COLLECTE (sauter les champs déjà connus):
-patient_status → full_name → date_of_birth → phone → email → ramq_number → requested_service → (si accident: accident_type → claim[SKIPPABLE]) → reason → body_part → requested_practitioner → créneaux → confirmation
+Étape 2 — SERVICE (si manquant):
+  requested_service manquant → "Pour quel service souhaitez-vous consulter ?"
+  
+Étape 3 — MÉDECIN (si service = médecine famille ET praticien manquant):
+  → "Quel est le nom de votre médecin de famille ? (${gmf})"
+  Patient donne nom → confirmer + passer à étape 4
+  
+Étape 3b — PHYSIO (si service = physiothérapie ET praticien manquant):
+  → "Souhaitez-vous un physio en particulier ? (${physio})"
 
-STYLE DE CONVERSATION (naturel, chaleureux, professionnel):
-- "Merci. Pouvez-vous me confirmer votre nom complet ?"
-- "Parfait. Quel est votre numero de telephone ?"
-- "Je suis desole d entendre ca. Depuis combien de temps ?"
-- "Sur une echelle de 0 a 10, quelle est l intensite de la douleur ?"
-- NE JAMAIS epeler un numero en lettres (4388334319, pas "quatre cent trente-huit...")
-- UNE seule question a la fois sauf nom+prenom ensemble
+Étape 4 — DIAGNOSTIC (3 questions max, dans CET ORDRE):
+  4a. reason manquant → "À propos de quoi souhaitez-vous consulter ?"
+  4b. body_part manquant → "Où ressentez-vous le problème exactement ?"
+  4c. urgency_level manquant → "Sur une échelle de 0 à 10, quelle est l'intensité ?"
+  STOP — passer à l'étape 5 après ces 3 questions.
 
-QUESTIONS DE DIAGNOSTIC:
-Urgence/douleur: description → duree → douleur 0-10 → ca empire?
-Physiotherapie: zone → duree → douleur 0-10 → accident travail?
-Medecin famille: motif → duree → medecin de famille ici?
-Pediatrie: age enfant → symptomes → duree → fievre?
+Étape 5 — ACCIDENT (SEULEMENT si physio ou CNESST/SAAQ mentionné):
+  "Est-ce lié à un accident de travail ou de la route ?"
+  Si oui: "Avez-vous un numéro de dossier CNESST/SAAQ ?" (SKIPPABLE)
 
-EXTRACTION AUTOMATIQUE — exemples:
-• "j'ai un dossier" → state:{patient_status:"EXISTING_PATIENT"} → demander full_name
-• "Hedi Bennis" → state:{full_name:{value:"Hedi Bennis",status:"CONFIRMED"}} → demander date_of_birth
-• "438-833-4319" → state:{phone:{value:"4388334319",status:"CONFIRMED"}} (JAMAIS epeler)
-• "1547 rue Trepanier Laval H7W3G5" → state:{address:{value:"1547 rue Trepanier Laval H7W3G5",status:"CONFIRMED"}}
-• "Dr Odette Prefontaine" → state:{requested_practitioner:{value:"Dr. Odette Prefontaine",status:"CONFIRMED"},requested_service:{value:"medecin_de_famille",status:"CONFIRMED"}}
-• "pas de CNESST" → state:{cnesst_claim_number:{value:null,status:"SKIPPED"}} → continuer
-• 911 SEULEMENT: inconscient, arret respiratoire, douleur thoracique intense, AVC, hemorragie severe
-NORMALISATION:
-• Téléphone: garder 10 chiffres (438 833 4319 → "4388334319")
-• Date: YYYY-MM-DD (7 janvier 1971 → "1971-01-07")
-• Email: arobase→@, point→., tout minuscule
-• RAMQ: 4 lettres+8 chiffres majuscules
+Étape 6 — CRÉNEAUX (quand étapes 1-4 complètes):
+  → Retourner OBLIGATOIREMENT slots=[...] avec 3 créneaux
+  speak: "Voici 3 créneaux disponibles pour {praticien}. Lequel vous convient ?"
+  slots=[
+    {"id":"1","label":"Aujourd'hui à 14h00","provider":"{praticien}","dept":"{dépt}","duration":"20 min","date":"2026-08-08","time":"14:00"},
+    {"id":"2","label":"Aujourd'hui à 16h30","provider":"{praticien}","dept":"{dépt}","duration":"20 min","date":"2026-08-08","time":"16:30"},
+    {"id":"3","label":"Demain à 9h00","provider":"{praticien}","dept":"{dépt}","duration":"20 min","date":"2026-08-09","time":"09:00"}
+  ]
 
-SERVICES DISPONIBLES À LA CLINIQUE (selon urgence):
-• Urgence clinique (même jour): médecin de famille, sans-rendez-vous, pédiatrie urgente
-• Régulier (2-5 jours): médecin de famille, suivi, bilan
-• Spécialisé (1-3 semaines): physiothérapie, ergo, nutrition, psychologie
-• CNESST/SAAQ: physio dès le lendemain si accident récent
+Étape 7 — CONFIRMATION (quand patient choisit un créneau):
+  → Retourner OBLIGATOIREMENT booking={...}
+  booking={"date":"...","time":"...","provider":"...","dept":"...","service":"...","patient_name":"...","patient_phone":"...","patient_email":"...","ramq":"****xxxx","reason":"...","body_part":"...","accident_type":"...","claim_number":"...","payer":"RAMQ","code":"RDV-20260808-XXXX","sms":"(514)555-0100","mode":"En clinique","room":"Salle 3","duration":"20 min"}
 
-RÈGLE URGENCE CLINIQUE: Si patient dit "urgence", "urgent", "aujourd'hui", "c'est grave" ou décrit symptômes aigus:
-→ Proposer créneaux AUJOURD'HUI ou DEMAIN (pas dans 2 semaines)
-→ Service: "Consultation urgente" ou "Clinique sans rendez-vous"
-→ Durée: 15-20 min
+EXTRACTION MULTI-ENTITÉS: extraire TOUT en 1 message avant de répondre.
+NORMALISATION: tél=10chiffres, date=YYYY-MM-DD, email=minuscule+@+.
+911 SEULEMENT: inconscient|arrêt respiratoire|douleur thoracique intense|AVC`;
 
-CRÉNEAUX (quand service connu):
-slots=[{"id":"1","label":"Aujourd'hui à 14h00","provider":"Dr. Fahd Awada","dept":"Médecine familiale - Urgent","duration":"20 min","date":"2026-08-08","time":"14:00"},{"id":"2","label":"Aujourd'hui à 16h30","provider":"Dr. Odette Préfontaine","dept":"Médecine familiale - Urgent","duration":"20 min","date":"2026-08-08","time":"16:30"},{"id":"3","label":"Demain à 9h00","provider":"Dr. Fahd Awada","dept":"Médecine familiale","duration":"20 min","date":"2026-08-09","time":"09:00"}]
+  const en = `You are ${name}, VITARA ${isMale?'medical assistant':'medical assistant'} at Clinique JOLIBOURG Laval.
+JSON ONLY. FORMAT: {"speak":"...","intent":"...","state":{},"slots":null,"booking":null}
+STATE: ${stateBlock}
+CONFIRMED=NEVER ASK AGAIN. One question at a time.
+FLOW: name→phone→email→ramq→service→practitioner→reason→body_part→intensity→slots→booking
+DOCTORS: ${gmf} | PHYSIO: ${physio} | 911 only: unconscious/not breathing/heart attack`;
 
-CONFIRMATION (quand créneau choisi):
-booking={"date":"...","time":"...","provider":"...","dept":"...","service":"...","patient_name":"...","patient_phone":"...","patient_email":"...","ramq":"****XXXX","reason":"...","body_part":"...","accident_type":"...","claim_number":"...","payer":"RAMQ","code":"RDV-20260811-7429","sms":"(514)555-0100","mode":"En clinique","room":"Salle 3","duration":"20 min"}
-
-MÉDECINS GMF: ${gmf}
-PHYSIO (CNESST/SAAQ): ${physio}`;
-
-  const en = `You are ${name}, VITARA medical assistant — Clinique Médicale JOLIBOURG de Laval. ${date}.
-JSON ONLY. FORMAT: {"speak":"...","intent":"...","state":{...},"slots":null,"booking":null}
-${stateCtx}
-RULES: ✅CONFIRMED=NEVER ASK AGAIN | ⏭️SKIPPED=MOVE ON | Extract ALL entities at once | ONE question per turn
-ORDER: patient_status→name→dob→phone→email→ramq→service→accident→claim[optional]→reason→body→practitioner→slots→confirm
-DOCTORS: ${gmf} | PHYSIO: ${physio} | EMERGENCY→911`;
-
-  const ar = `أنت ${name}، ${isMale?'المساعد الطبي':'المساعدة الطبية'} في Clinique Médicale JOLIBOURG de Laval.
-${stateCtx}
+  const ar = `أنت ${name}، ${isMale?'المساعد الطبي':'المساعدة الطبية'} في Clinique JOLIBOURG.
 JSON فقط: {"speak":"...","intent":"...","state":{},"slots":null,"booking":null}
-قواعد: ✅مؤكد=لا تسأل|⏭️متجاوز=لا تلح|استخرج كل المعلومات دفعة واحدة|سؤال واحد فقط
-ترتيب: الاسم→تاريخ_الميلاد→الهاتف→البريد→RAMQ→الخدمة→الحادث→السبب→المختص→المواعيد→التأكيد
-طوارئ→911`;
+الحالة: ${stateBlock}
+التدفق: الاسم→الهاتف→البريد→RAMQ→الخدمة→المختص→السبب→المواعد→التأكيد`;
 
   const base: Record<string, string> = { fr, en, ar };
-  return (base[lang] || fr) + (ragContext ? '\n\nRAG:\n' + ragContext.slice(0, 400) : '');
+  return (base[lang] || fr) + (ragContext ? '\n\nRAG:\n' + ragContext.slice(0, 300) : '');
 }
+
 

@@ -383,7 +383,7 @@ export default function PatientPage() {
         body: JSON.stringify({
           messages:           safeHist,
           language:           currentLang,
-          max_tokens:         500,
+          max_tokens:         300,
           agent:              agentRef.current.id,
           gender:             agentRef.current.id === 'said' || agentRef.current.id === 'alain' ? 'male' : 'female',
           conversation_state: convState.current,  // ← Envoyer l'état actuel
