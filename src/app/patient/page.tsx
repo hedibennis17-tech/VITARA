@@ -13,7 +13,7 @@ const AGENTS = [
 
 // ── SERVICES HOME — vraies images par rubrique ───────────────
 const SERVICES_HOME = [
-  { id:'urgences',  title:'Urgences',            sub:'Appelez le 911 si vital',   img:'/services/urgences.png',  color:'#EF4444', urgent:true,  msg:"J'ai une urgence médicale",                                          full:true  },
+  { id:'urgences',  title:'Urgences',            sub:'Consultation urgente · Même jour',   img:'/services/urgences.png',  color:'#EF4444', urgent:true,  msg:"J'ai besoin d'une consultation urgente aujourd'hui, c'est important",                                          full:true  },
   { id:'pediatrie', title:'Pédiatrie',            sub:'Soins pour enfants',        img:'/services/pediatrie.jpg', color:'#EC4899', urgent:false, msg:"Mon enfant a besoin de soins médicaux",                              full:false },
   { id:'rdv',       title:'Rendez-vous',          sub:'Prendre ou annuler',        img:'/services/rdv.jpg',       color:'#00D7C8', urgent:false, msg:"Je voudrais prendre un rendez-vous",                                 full:false },
   { id:'cnesst',    title:'Accident de travail',  sub:'CNESST · SAAQ',             img:'/services/cnesst.jpg',    color:'#F9A826', urgent:false, msg:"J'ai eu un accident de travail, j'ai besoin de physiothérapie CNESST", full:false },
@@ -674,7 +674,7 @@ export default function PatientPage() {
           <div style={{fontSize:10,fontWeight:600,color:T.muted,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:10}}>Nos services</div>
 
           {/* URGENCES — pleine largeur, rouge, proéminent */}
-          <button onClick={()=>{ greeted.current=false; startSession(agent,'fr'); setTimeout(()=>sendMsg("J'ai une urgence médicale"),700); }}
+          <button onClick={()=>{ greeted.current=false; startSession(agent,'fr'); setTimeout(()=>sendMsg("J'ai besoin d'une consultation urgente aujourd'hui"),700); }}
             style={{width:'100%',height:90,borderRadius:14,overflow:'hidden',position:'relative',border:'none',cursor:'pointer',padding:0,marginBottom:8,display:'block'}}>
             <img src="/services/urgences.png" alt="Urgences" style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center'}}/>
             <div style={{position:'absolute',inset:0,background:'linear-gradient(to right,rgba(239,68,68,0.75),rgba(0,0,0,0.4))'}}/>
