@@ -562,10 +562,50 @@ export default function PatientPage() {
     const s = slots.find((x: any) => x.id === sel);
     if (!s) return;
     setSlots(null);
-    sendMsg(langRef.current === 'fr'
-      ? `Je confirme le créneau : ${s.label} avec ${s.provider}.`
-      : `I confirm: ${s.label} with ${s.provider}.`);
-  }, [sel, slots, sendMsg]);
+
+    // Générer le booking LOCALEMENT depuis l'état actuel — pas d'appel Groq
+    const st = convState.current as any;
+    const code = `RDV-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Math.floor(1000+Math.random()*9000)}`;
+    const localBooking = {
+      date:         s.label,
+      time:         s.time || s.label,
+      provider:     s.provider,
+      dept:         s.dept,
+      service:      st.requested_service?.value || s.dept,
+      patient_name: st.full_name?.value || '',
+      patient_phone:st.phone?.value || '',
+      patient_email:st.email?.value || '',
+      ramq:         st.ramq_number?.value ? '****' + String(st.ramq_number.value).slice(-4) : '',
+      reason:       st.reason?.value || '',
+      body_part:    st.body_part?.value || '',
+      accident_type:st.accident_type?.value || null,
+      claim_number: st.cnesst_claim_number?.value || st.saaq_claim_number?.value || null,
+      payer:        st.accident_type?.value && st.accident_type.value !== 'NONE'
+                      ? st.accident_type.value : 'RAMQ',
+      code,
+      sms:          '(514) 555-0100',
+      mode:         'En clinique',
+      room:         'Salle 3',
+      duration:     s.duration || '20 min',
+    };
+
+    setBooking(localBooking);
+    // Sauvegarder dans localStorage
+    try {
+      const saved = JSON.parse(localStorage.getItem('vitara_appointments') || '[]');
+      if (!saved.some((a: any) => a.code === code)) {
+        localStorage.setItem('vitara_appointments', JSON.stringify([{
+          id: `ai-${Date.now()}`, code, date: s.label, time: s.time,
+          type: localBooking.service, provider: s.provider, dept: s.dept,
+          payer: localBooking.payer, mode: 'En clinique', duration: s.duration,
+          status: 'confirmed', color: agentRef.current.color, source: 'vitara_ai',
+          bookedAt: new Date().toISOString(),
+        }, ...saved].slice(0, 20)));
+      }
+    } catch { /* ignore */ }
+
+    setTimeout(() => setScreen('done'), 400);
+  }, [sel, slots]);
 
   const resetAll = useCallback(() => {
     synthRef.current?.cancel();

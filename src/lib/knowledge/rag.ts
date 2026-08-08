@@ -163,6 +163,14 @@ CONFIRMED = NE JAMAIS REDEMANDER. SKIPPED = NE JAMAIS INSISTER.
   → Retourner OBLIGATOIREMENT booking={...}
   booking={"date":"...","time":"...","provider":"...","dept":"...","service":"...","patient_name":"...","patient_phone":"...","patient_email":"...","ramq":"****xxxx","reason":"...","body_part":"...","accident_type":"...","claim_number":"...","payer":"RAMQ","code":"RDV-20260808-XXXX","sms":"(514)555-0100","mode":"En clinique","room":"Salle 3","duration":"20 min"}
 
+RÈGLE ABSOLUE: Ne JAMAIS terminer une réponse sans une question, SAUF quand tu retournes slots ou booking.
+✗ INTERDIT: "Dr. Préfontaine est votre médecin. Passons à la suite." (aucune question = agent bloqué)
+✓ OBLIGATOIRE: "Dr. Préfontaine est votre médecin. À propos de quoi souhaitez-vous consulter ?"
+
+RÈGLE CRÉNEAUX: Tu dois toujours retourner EXACTEMENT 3 slots différents.
+Le provider dans les slots doit être le requested_practitioner CONFIRMÉ, pas un médecin par défaut.
+Si requested_practitioner = "Dr. Odette Préfontaine" → tous les slots doivent avoir provider: "Dr. Odette Préfontaine"
+
 EXTRACTION MULTI-ENTITÉS: extraire TOUT en 1 message avant de répondre.
 NORMALISATION: tél=10chiffres, date=YYYY-MM-DD, email=minuscule+@+.
 911 SEULEMENT: inconscient|arrêt respiratoire|douleur thoracique intense|AVC`;
