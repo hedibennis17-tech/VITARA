@@ -4,13 +4,15 @@ import { buildSystemPrompt, retrieveContext } from '@/lib/knowledge/rag';
 
 export const maxDuration = 30;
 
+const MODEL = 'llama-3.1-8b-instant'; // 500K tokens/jour vs 100K pour le 70b
+
 async function groqCall(apiKey: string, messages: any[], system: string, maxTokens = 100) {
   const t = Date.now();
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
     body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
+      model: MODEL,
       max_tokens: maxTokens,
       messages: [{ role: 'system', content: system }, ...messages],
       temperature: 0.5,
@@ -42,9 +44,8 @@ export async function GET(req: NextRequest) {
     },
   };
 
-  if (!apiKey) {
-    return NextResponse.json({ ...results, error: 'GROQ_API_KEY manquante' }, { status: 500 });
-  }
+  results.model_used = MODEL;
+  results.model_quota = '500 000 tokens/jour (5× plus que llama-70b)';
 
   // System prompt réel utilisé par VITARA
   const ctx = retrieveContext('physiothérapie genou rendez-vous', []);
