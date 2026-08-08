@@ -470,7 +470,7 @@ function MonProfil() {
         ]},
         { label:'Médecin de famille', fields:[
           { k:'Professionnel', v:PATIENT.doctor },
-          { k:'Clinique',      v:'VITARA — Laval' },
+          { k:'Clinique',      v:'Clinique Médicale JOLIBOURG de Laval' },
         ]},
       ].map(section=>(
         <Card key={section.label} style={{ padding:16, marginBottom:12 }}>

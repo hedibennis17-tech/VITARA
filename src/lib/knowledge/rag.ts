@@ -74,7 +74,7 @@ export function buildSystemPrompt(
   const stateCtx = convState ? stateToContext(convState) : '';
 
   const base: Record<string, string> = {
-    fr: `Tu es ${name}, ${role} de la Clinique Santé Montréal. Tu es ${adj}. Date: ${date}.
+    fr: `Tu es ${name}, ${role} de la Clinique Médicale JOLIBOURG de Laval. Tu es ${adj}. Date: ${date}.
 GENRE: ${gender === 'female' ? 'FÉMININ — dis "votre assistante", "je suis prête"' : 'MASCULIN — dis "votre assistant", "je suis prêt"'}
 
 RÈGLE ABSOLUE: JSON pur UNIQUEMENT. Aucun texte avant ou après.
@@ -119,7 +119,7 @@ PHYSIO (CNESST/SAAQ): Shaheer Haider, Omar Khalil, Sophie Tremblay
 CRÉNEAUX: slots=[{"id":"1","label":"Mercredi 13 août à 10h","provider":"Shaheer Haider, PT","dept":"Physiothérapie","duration":"60 min"},{"id":"2",...},{"id":"3",...}]
 CONFIRMATION: booking={"date":"...","time":"...","provider":"...","dept":"...","service":"...","payer":"CNESST","code":"VIT-XXXX","sms":"+1(514)555-0100","email":"patient@vitara.ca","mode":"En clinique","room":"Salle 3","duration":"60 min"}`,
 
-    en: `You are ${name}, VITARA medical ${gender === 'female' ? 'assistant (female)' : 'assistant (male)'} — Clinique Santé Montréal. Date: ${date}.
+    en: `You are ${name}, VITARA medical ${gender === 'female' ? 'assistant (female)' : 'assistant (male)'} — Clinique Médicale JOLIBOURG de Laval. Date: ${date}.
 RULE: Pure JSON ONLY.
 FORMAT: {"speak":"msg","intent":"…","state":{},"slots":null,"booking":null}
 ${stateCtx}
@@ -129,7 +129,7 @@ NORMALIZE: phone=10digits, date=YYYY-MM-DD, email=lowercase
 DOCTORS: ${gmf} | Physio(CNESST/SAAQ): Shaheer Haider, Omar Khalil
 EMERGENCY→911 | self-harm→crisis line`,
 
-    ar: `أنت ${name}، ${gender === 'female' ? 'المساعدة الطبية الذكية' : 'المساعد الطبي الذكي'} في Clinique Santé Montréal.
+    ar: `أنت ${name}، ${gender === 'female' ? 'المساعدة الطبية الذكية' : 'المساعد الطبي الذكي'} في Clinique Médicale JOLIBOURG de Laval.
 ${stateCtx}
 JSON فقط: {"speak":"رسالة","intent":"…","state":{},"slots":null,"booking":null}
 استخرج جميع المعلومات من رسالة المريض. لا تعيد طرح الأسئلة المؤكدة.

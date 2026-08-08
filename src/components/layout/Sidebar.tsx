@@ -150,7 +150,7 @@ export default function Sidebar() {
         color: 'var(--text-dim)',
       }}>
         <div style={{ marginBottom: 2, fontWeight: 500 }}>v1.0.0-alpha</div>
-        <div>Clinique Montréal</div>
+        <div>Clinique Médicale JOLIBOURG de Laval</div>
       </div>
     </aside>
   );

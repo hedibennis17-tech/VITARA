@@ -4,12 +4,12 @@ import { useState, useEffect, useRef, useCallback } from "react";
 const C = { midnight:"#070F1C",surface:"#0D1B2E",surface2:"#112138",border:"#1A2E47",teal:"#00C5D4",mint:"#00E5A0",text:"#E8F0FA",muted:"#5E7A96",urgent:"#FF4F4F",purple:"#A78BFA",warn:"#F9A826" };
 
 const SYSTEM = {
-fr:`Tu es VITARA, assistante IA vocale de la Clinique Santé Montréal. Réponds en JSON pur uniquement:
+fr:`Tu es VITARA, assistante IA vocale de la Clinique Médicale JOLIBOURG de Laval. Réponds en JSON pur uniquement:
 {"speak":"message au patient (2 phrases max, chaleureux)","intent":"welcome|identify|need|dept|slots|confirm|cancel|emergency|done","slots":null,"booking":null}
 Pour intent "slots": slots=[{"id":"1","label":"Demain 10h00","provider":"M. Omar Khalil","dept":"Physiothérapie"},{"id":"2","label":"Jeudi 14h00","provider":"Dr. Jean-François Martin","dept":"Médecine familiale"},{"id":"3","label":"Vendredi 9h30","provider":"M. Omar Khalil","dept":"Physiothérapie"}]
 Pour intent "confirm": booking={"date":"Jeudi 8 août 2026","time":"14h00","provider":"Dr. Jean-François Martin","dept":"Médecine familiale","code":"VIT-2847","sms":"+1(514)555-XXXX","email":"patient@courriel.ca"}
 Flux: 1)Accueil chaleureux 2)Prénom+téléphone 3)Besoin 4)Département 5)3 créneaux (intent:slots) 6)Confirmation (intent:confirm avec booking rempli). Urgence grave→intent:emergency.`,
-en:`You are VITARA, AI voice assistant at Clinique Santé Montréal. Respond in pure JSON only:
+en:`You are VITARA, AI voice assistant at Clinique Médicale JOLIBOURG de Laval. Respond in pure JSON only:
 {"speak":"message to patient (2 sentences max, warm)","intent":"welcome|identify|need|dept|slots|confirm|cancel|emergency|done","slots":null,"booking":null}
 For intent "slots": slots=[{"id":"1","label":"Tomorrow 10:00am","provider":"M. Omar Khalil","dept":"Physiotherapy"},{"id":"2","label":"Thursday 2:00pm","provider":"Dr. Jean-François Martin","dept":"Family Medicine"},{"id":"3","label":"Friday 9:30am","provider":"M. Omar Khalil","dept":"Physiotherapy"}]
 For intent "confirm": booking={"date":"Thursday Aug 8, 2026","time":"2:00 PM","provider":"Dr. Jean-François Martin","dept":"Family Medicine","code":"VIT-2847","sms":"+1(514)555-XXXX","email":"patient@email.com"}
@@ -193,7 +193,7 @@ export default function VitaraPatientApp(){
 
   const start=useCallback((l)=>{
     setLang(l);setPhase('chat');
-    const greet={fr:"Bonjour ! Je suis VITARA, votre assistante médicale virtuelle de la Clinique Santé Montréal. Comment puis-je vous aider aujourd'hui ?",en:"Hello! I'm VITARA, your virtual medical assistant at Clinique Santé Montréal. How can I help you today?",ar:"مرحباً! أنا VITARA، مساعدتك الطبية الافتراضية في عيادة كلينيك سانتي مونتريال. كيف يمكنني مساعدتك اليوم؟"};
+    const greet={fr:"Bonjour ! Je suis VITARA, votre assistante médicale virtuelle de la Clinique Médicale JOLIBOURG de Laval. Comment puis-je vous aider aujourd'hui ?",en:"Hello! I'm VITARA, your virtual medical assistant at Clinique Médicale JOLIBOURG de Laval. How can I help you today?",ar:"مرحباً! أنا VITARA، مساعدتك الطبية الافتراضية في Clinique Médicale JOLIBOURG de Laval. كيف يمكنني مساعدتك اليوم؟"};
     const t=greet[l];setMsgs([{role:'ai',text:t}]);setHist([{role:'assistant',content:t}]);
     setTimeout(()=>{setAv('speaking');speak(t);},400);
   },[speak]);
@@ -206,7 +206,7 @@ export default function VitaraPatientApp(){
   if(phase==='welcome')return(
     <div style={{...base,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'32px 20px',gap:0}}>
       <div style={{textAlign:'center',marginBottom:28}}>
-        <div style={{fontSize:10,color:C.muted,letterSpacing:'.22em',textTransform:'uppercase',fontWeight:500,marginBottom:5}}>Clinique Santé Montréal</div>
+        <div style={{fontSize:10,color:C.muted,letterSpacing:'.22em',textTransform:'uppercase',fontWeight:500,marginBottom:5}}>Clinique Médicale JOLIBOURG de Laval</div>
         <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:40,fontWeight:700,background:`linear-gradient(135deg,${C.teal},${C.mint})`,WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',letterSpacing:'-.03em',lineHeight:1}}>VITARA</div>
         <div style={{fontSize:11,color:C.muted,marginTop:4}}>Assistant IA Médical · AI Medical Assistant</div>
       </div>

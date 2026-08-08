@@ -598,7 +598,7 @@ export default function PatientPage() {
           <div style={{width:34,height:34,background:`linear-gradient(135deg,${T.teal},${T.purple})`,borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16}}>✚</div>
           <div>
             <div style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:14,background:`linear-gradient(135deg,${T.teal},${T.purple})`,WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>VITARA</div>
-            <div style={{fontSize:7,color:T.muted,letterSpacing:'.12em',textTransform:'uppercase'}}>CLINIQUE SANTÉ MONTRÉAL</div>
+            <div style={{fontSize:7,color:T.muted,letterSpacing:'.12em',textTransform:'uppercase'}}>JOLIBOURG · LAVAL</div>
           </div>
         </div>
         <div style={{display:'flex',gap:6}}>
@@ -740,6 +740,11 @@ export default function PatientPage() {
           if(v==='home')    { setScreen('home'); }
         }}
         inChat={false}/>
+      {/* Crédit — visible en bas de l'accueil */}
+      <div style={{textAlign:'center',padding:'6px 0 72px',background:'transparent'}}>
+        <span style={{fontSize:9,color:T.muted,letterSpacing:'.06em'}}>Créé par </span>
+        <span style={{fontSize:9,color:T.teal,fontWeight:700,letterSpacing:'.06em'}}>Hedi Bennis</span>
+      </div>
     </div>
   );
 
@@ -1229,6 +1234,14 @@ function ScreenProfil({ T, onBack, onNav, theme, setTheme }: any) {
           style={{width:'100%',padding:'12px',background:'transparent',border:`1px solid ${T.urgent}44`,borderRadius:11,color:T.urgent,fontSize:12,cursor:'pointer'}}>
           Effacer mes données locales
         </button>
+
+        {/* Crédit */}
+        <div style={{textAlign:'center',marginTop:20,paddingTop:16,borderTop:`1px solid ${T.border}`}}>
+          <div style={{fontSize:10,color:T.muted}}>VITARA v1.0 · Clinique Médicale JOLIBOURG de Laval</div>
+          <div style={{fontSize:11,color:T.teal,fontWeight:600,marginTop:4,fontFamily:"'Space Grotesk',sans-serif"}}>
+            Créé par Hedi Bennis
+          </div>
+        </div>
       </div>
       <NavBar active="prof" T={T} onMic={()=>{}} onNav={onNav} inChat={false}/>
     </div>

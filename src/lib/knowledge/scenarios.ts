@@ -49,7 +49,7 @@ export const SCENARIOS: Scenario[] = [
   { id:'S023', title:'Paiement — tarifs', tags:['prix','coût','tarif','combien','how much','gratuit','payant'], dept:'all', priority:2,
     context:`Tarifs (sans assurance): Physio 80-120$/séance | Psy 130-180$/séance | Nutrition 90-130$/séance | Ergo 100-150$/séance. Médecine familiale couverte RAMQ. Paiement: carte, débit, comptant.` },
   { id:'S024', title:'Infos clinique', tags:['horaires','adresse','où','parking','stationnement','transport','ouvert'], dept:'all', priority:3,
-    context:`Clinique: 1234 Boul. Laval, Laval QC | Tél: (514)555-0100 | Lun-Ven 7h30-20h, Sam 8h-17h, Dim fermé. Stationnement gratuit 2h (valider réception). Bus 70 arrêt devant.` },
+    context:`Clinique: 1234 Boul. Curé-Labelle, Laval QC | Tél: (514)555-0100 | Lun-Ven 7h30-20h, Sam 8h-17h, Dim fermé. Stationnement gratuit 2h (valider réception). Bus 70 arrêt devant.` },
   { id:'S025', title:'Portail patient', tags:['portail','portal','compte','app','application','login','mot de passe','vitara-patient'], dept:'all', priority:3,
     context:`Portail: vitara-patient.ca (web + iOS/Android). RDV 24/7, résultats, messagerie. Inscription: carte RAMQ + date naissance + courriel. Support: 1-855-VITARA-2.` },
 ];
