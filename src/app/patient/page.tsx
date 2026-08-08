@@ -593,21 +593,19 @@ export default function PatientPage() {
     <div style={{height:'100vh',background:T.bg,fontFamily:"'Inter',sans-serif",color:T.text,display:'flex',flexDirection:'column',maxWidth:420,margin:'0 auto'}}>
 
       {/* Header */}
-      <div style={{padding:'12px 18px 8px',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0,borderBottom:`1px solid ${T.border}`}}>
-        <div style={{display:'flex',alignItems:'center',gap:9}}>
-          <div style={{width:34,height:34,background:`linear-gradient(135deg,${T.teal},${T.purple})`,borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16}}>✚</div>
-          <div>
-            <div style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:14,background:`linear-gradient(135deg,${T.teal},${T.purple})`,WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>VITARA</div>
-            <div style={{fontSize:7,color:T.muted,letterSpacing:'.12em',textTransform:'uppercase'}}>JOLIBOURG · LAVAL</div>
-          </div>
+      <div style={{padding:'12px 18px 10px',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0,borderBottom:`1px solid ${T.border}`}}>
+        <div>
+          <div style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:800,fontSize:15,color:T.text,lineHeight:1.15}}>Clinique Médicale JOLIBOURG</div>
+          <div style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:600,fontSize:12,color:T.teal,marginTop:1}}>Laval</div>
         </div>
-        <div style={{display:'flex',gap:6}}>
-          <button onClick={()=>setTheme(t=>t==='dark'?'light':'dark')} style={{padding:'4px 9px',background:T.glass,border:`1px solid ${T.border}`,borderRadius:18,fontSize:10,color:T.text,cursor:'pointer',backdropFilter:'blur(8px)'}}>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <div style={{textAlign:'right'}}>
+            <div style={{fontSize:8,color:T.muted}}>Créé par</div>
+            <div style={{fontSize:10,color:T.teal,fontWeight:700,fontFamily:"'Space Grotesk',sans-serif"}}>Hedi Bennis</div>
+          </div>
+          <button onClick={()=>setTheme(t=>t==='dark'?'light':'dark')} style={{width:28,height:28,background:T.glass,border:`1px solid ${T.border}`,borderRadius:8,cursor:'pointer',fontSize:13,display:'flex',alignItems:'center',justifyContent:'center'}}>
             {theme==='dark'?'☀️':'🌙'}
           </button>
-          <div style={{width:32,height:32,background:T.glass,border:`1px solid ${T.border}`,borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',position:'relative',cursor:'pointer',backdropFilter:'blur(8px)'}}>
-            🔔<div style={{position:'absolute',top:6,right:6,width:6,height:6,background:T.teal,borderRadius:'50%'}}/>
-          </div>
         </div>
       </div>
 
