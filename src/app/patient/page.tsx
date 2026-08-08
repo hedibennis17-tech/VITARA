@@ -1081,7 +1081,7 @@ export default function PatientPage() {
         <div style={{flex:1}}>
           <div style={{fontSize:13,fontWeight:600,fontFamily:"'Space Grotesk',sans-serif"}}>{agent.name}</div>
           <div style={{fontSize:10,color:vState!=='idle'?agent.color:T.mint}}>
-            {vState==='speaking'?'Parle...':vState==='listening'?'Écoute...':vState==='thinking'?'Analyse...':'● En ligne · Workflow 10 étapes'}
+            {vState==='speaking'?'Parle...':vState==='listening'?'Écoute...':vState==='thinking'?'Analyse...':'● En ligne · Assistant médical'}
           </div>
         </div>
         {/* Toggle vocal/texte — NE RÉINITIALISE PAS le chat */}
