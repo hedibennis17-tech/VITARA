@@ -1,0 +1,704 @@
+{
+  "project": {
+    "name": "VITARA",
+    "module": "Voice Patient Intake & Appointment Workflow",
+    "version": "3.0.0",
+    "language_default": "fr-CA",
+    "purpose": "Agent vocal médical administratif capable de recueillir, normaliser, mémoriser et utiliser les informations d'un patient sans répétition inutile."
+  },
+  "CRITICAL_DEVELOPER_RULES": {
+    "priority": "CRITICAL",
+    "rules": [
+      "Le moteur doit conserver un état de conversation persistant pendant toute la session.",
+      "Une information confirmée ne doit JAMAIS être demandée une deuxième fois pendant la même session.",
+      "Une information déjà présente dans le compte patient ne doit pas être redemandée inutilement.",
+      "Si plusieurs informations sont données dans une seule phrase, extraire toutes les informations avant de répondre.",
+      "Ne jamais recommencer le workflow à l'étape 1 après une erreur de reconnaissance vocale.",
+      "En cas d'erreur ASR, demander uniquement l'information incomprise.",
+      "Ne jamais remplacer une information confirmée par une nouvelle valeur sans confirmation.",
+      "Ne jamais demander plusieurs informations complexes dans une seule question vocale.",
+      "Le système doit comprendre les formulations naturelles et les abréviations vocales.",
+      "Le système doit normaliser les informations avant leur enregistrement.",
+      "Le système doit distinguer les informations personnelles, médicales, administratives et d'assurance.",
+      "L'agent ne doit pas poser de diagnostic médical.",
+      "L'agent sert à l'accueil, l'orientation, la collecte administrative et la prise de rendez-vous."
+    ]
+  },
+  "CONVERSATION_MEMORY": {
+    "enabled": true,
+    "storage": {
+      "session_memory": true,
+      "patient_profile_memory": true,
+      "appointment_memory": true,
+      "workflow_memory": true
+    },
+    "field_status": [
+      "UNKNOWN",
+      "COLLECTED",
+      "CONFIRMED",
+      "INVALID",
+      "AMBIGUOUS",
+      "UPDATED"
+    ],
+    "rule": {
+      "UNKNOWN": "La question peut être posée.",
+      "COLLECTED": "La donnée existe mais doit être confirmée si nécessaire.",
+      "CONFIRMED": "Ne jamais redemander cette information.",
+      "INVALID": "Demander uniquement une nouvelle valeur.",
+      "AMBIGUOUS": "Demander uniquement une clarification.",
+      "UPDATED": "Utiliser la nouvelle valeur après confirmation."
+    },
+    "memory_object": {
+      "language": null,
+      "patient_status": null,
+      "patient_id": null,
+      "full_name": {
+        "value": null,
+        "status": "UNKNOWN"
+      },
+      "date_of_birth": {
+        "value": null,
+        "status": "UNKNOWN"
+      },
+      "phone": {
+        "value": null,
+        "status": "UNKNOWN"
+      },
+      "email": {
+        "value": null,
+        "status": "UNKNOWN"
+      },
+      "ramq_number": {
+        "value": null,
+        "status": "UNKNOWN"
+      },
+      "address": {
+        "value": null,
+        "status": "UNKNOWN"
+      },
+      "family_doctor": {
+        "value": null,
+        "status": "UNKNOWN"
+      },
+      "accident_type": {
+        "value": null,
+        "status": "UNKNOWN"
+      },
+      "cnesst_claim_number": {
+        "value": null,
+        "status": "UNKNOWN"
+      },
+      "saaq_claim_number": {
+        "value": null,
+        "status": "UNKNOWN"
+      },
+      "private_insurance": {
+        "value": null,
+        "status": "UNKNOWN"
+      },
+      "service": {
+        "value": null,
+        "status": "UNKNOWN"
+      },
+      "reason": {
+        "value": null,
+        "status": "UNKNOWN"
+      },
+      "body_part": {
+        "value": null,
+        "status": "UNKNOWN"
+      },
+      "symptoms": {
+        "value": null,
+        "status": "UNKNOWN"
+      },
+      "appointment_id": null,
+      "appointment_date": null,
+      "appointment_time": null,
+      "practitioner_id": null
+    }
+  },
+  "PATIENT_IDENTIFICATION": {
+    "patient_status": {
+      "accepted_values": [
+        "NEW_PATIENT",
+        "EXISTING_PATIENT"
+      ],
+      "natural_language_detection": {
+        "existing_patient": [
+          "je suis déjà patient",
+          "j'ai déjà un dossier",
+          "j'ai déjà une fiche",
+          "je suis déjà venu",
+          "je suis un patient chez vous",
+          "j'ai un dossier chez vous",
+          "je suis déjà inscrit"
+        ],
+        "new_patient": [
+          "je suis nouveau",
+          "c'est ma première fois",
+          "je n'ai jamais été chez vous",
+          "je veux créer un dossier"
+        ]
+      },
+      "UI_INTEGRATION": {
+        "existing_patient_button": "EXISTING_PATIENT",
+        "new_patient_button": "NEW_PATIENT"
+      },
+      "important": "Si le patient a déjà choisi EXISTING_PATIENT dans l'interface, NE PAS lui demander à nouveau s'il est nouveau ou existant."
+    },
+    "full_name": {
+      "field": "full_name",
+      "collect_together": true,
+      "question": "Pouvez-vous me donner votre prénom et votre nom de famille ?",
+      "accepted_examples": [
+        "Hedi Bennis",
+        "Hedi, Bennis",
+        "H E D I B E N N I S",
+        "Hedi Bénisse"
+      ],
+      "processing": [
+        "extraire prénom",
+        "extraire nom",
+        "conserver accents",
+        "supprimer espaces inutiles",
+        "normaliser majuscules",
+        "ne pas modifier phonétiquement sans confirmation"
+      ],
+      "confirmation": "J'ai compris « {full_name} ». Est-ce exact ?",
+      "if_spelling_detected": {
+        "example": "H E D I",
+        "response": "J'ai compris H-E-D-I. Est-ce bien votre prénom ?"
+      },
+      "critical_rule": "Ne jamais remplacer Hedi par Eddy simplement parce que la reconnaissance vocale hésite. Toute correction phonétique doit être confirmée."
+    }
+  },
+  "DATE_OF_BIRTH": {
+    "field": "date_of_birth",
+    "question": "Quelle est votre date de naissance ?",
+    "accepted_formats": [
+      "7 janvier 1971",
+      "7 janvier 71",
+      "07 janvier 1971",
+      "07-01-1971",
+      "07011971",
+      "le 7 du 1 1971"
+    ],
+    "normalize_to": "YYYY-MM-DD",
+    "confirmation": "J'ai enregistré votre date de naissance comme {formatted_date}. Est-ce exact ?",
+    "ambiguity_rule": "Si la date peut être interprétée de plusieurs façons, demander une clarification uniquement sur la date."
+  },
+  "PHONE_NUMBER": {
+    "field": "phone",
+    "display_name": "Numéro de téléphone",
+    "question": "Quel est votre numéro de téléphone ?",
+    "accepted_formats": [
+      "4388334319",
+      "438 833 4319",
+      "438-833-4319",
+      "4 3 8 8 3 3 4 3 1 9",
+      "(438) 833-4319",
+      "4388334319."
+    ],
+    "spoken_number_detection": {
+      "enabled": true,
+      "example": "quatre trois huit huit trois trois quatre trois un neuf",
+      "convert_to": "4388334319"
+    },
+    "normalization": {
+      "steps": [
+        "convertir les chiffres prononcés en chiffres",
+        "supprimer espaces",
+        "supprimer tirets",
+        "supprimer parenthèses",
+        "supprimer points",
+        "supprimer caractères non numériques",
+        "vérifier 10 chiffres pour un numéro canadien",
+        "enregistrer la valeur canonique"
+      ],
+      "database_format": "4388334319",
+      "display_format": "438-833-4319"
+    },
+    "validation": {
+      "country": "CA",
+      "minimum_digits": 10,
+      "maximum_digits": 10
+    },
+    "confirmation": "J'ai enregistré le numéro {phone_display}. Est-ce exact ?",
+    "critical_rule": "4388334319 et 438 833 4319 doivent être considérés comme exactement le même numéro."
+  },
+  "EMAIL": {
+    "field": "email",
+    "question": "Quelle est votre adresse courriel ?",
+    "spoken_email": {
+      "enabled": true,
+      "dictionary": {
+        "arobase": "@",
+        "à": "@",
+        "at": "@",
+        "point": ".",
+        "dot": ".",
+        "tiret": "-",
+        "tiret du bas": "_",
+        "underscore": "_"
+      }
+    },
+    "examples": {
+      "spoken": "hedi tiret bas bennis arobase live point com",
+      "normalized": "hedi_bennis@live.com"
+    },
+    "normalization": [
+      "mettre en minuscules",
+      "supprimer espaces autour de @",
+      "supprimer espaces autour des points",
+      "convertir arobase en @",
+      "convertir point en .",
+      "convertir tiret du bas en _",
+      "valider syntaxe email"
+    ],
+    "confirmation": "J'ai compris {email}. Est-ce bien votre adresse courriel ?"
+  },
+  "RAMQ": {
+    "field": "ramq_number",
+    "display_name": "Numéro d'assurance maladie",
+    "question": "Quel est votre numéro d'assurance maladie ?",
+    "accepted": [
+      "ABCD 1234 5678",
+      "ABCD12345678",
+      "A B C D 1 2 3 4 5 6 7 8",
+      "ABCD-1234-5678"
+    ],
+    "spoken_character_detection": true,
+    "normalization": [
+      "convertir lettres épelées",
+      "convertir chiffres prononcés",
+      "mettre lettres en majuscules",
+      "supprimer espaces inutiles",
+      "supprimer tirets inutiles",
+      "conserver la structure canonique",
+      "valider selon les règles configurées par la clinique"
+    ],
+    "IMPORTANT": [
+      "Ne jamais confondre RAMQ avec téléphone.",
+      "Ne jamais confondre RAMQ avec date de naissance.",
+      "Ne jamais enregistrer une valeur RAMQ incertaine sans confirmation."
+    ],
+    "confirmation": "J'ai enregistré votre numéro d'assurance maladie. Les données sensibles sont protégées. Est-ce exact ?",
+    "privacy": {
+      "mask_ui": true,
+      "mask_logs": true,
+      "do_not_read_full_number_aloud": true
+    }
+  },
+  "ACCIDENT_WORKFLOW": {
+    "enabled": true,
+    "trigger_detection": {
+      "work_accident": [
+        "accident de travail",
+        "blessure au travail",
+        "je me suis blessé au travail",
+        "c'est un accident de travail",
+        "CNESST"
+      ],
+      "road_accident": [
+        "accident de voiture",
+        "accident de la route",
+        "accident routier",
+        "SAAQ"
+      ]
+    },
+    "question": "Est-ce que votre rendez-vous est lié à un accident de travail ou à un accident de la route ?",
+    "work_accident": {
+      "organization": "CNESST",
+      "next_question": "Avez-vous un numéro de dossier ou de réclamation CNESST ?",
+      "field": "cnesst_claim_number",
+      "accept_abbreviated_input": true,
+      "normalization": [
+        "convertir lettres prononcées",
+        "convertir chiffres prononcés",
+        "supprimer espaces inutiles",
+        "normaliser le format"
+      ],
+      "confirmation": "J'ai enregistré votre numéro de dossier CNESST. Est-ce exact ?"
+    },
+    "road_accident": {
+      "organization": "SAAQ",
+      "next_question": "Avez-vous un numéro de dossier ou de réclamation SAAQ ?",
+      "field": "saaq_claim_number",
+      "accept_abbreviated_input": true,
+      "normalization": [
+        "convertir lettres prononcées",
+        "convertir chiffres prononcés",
+        "supprimer espaces inutiles",
+        "normaliser le format"
+      ],
+      "confirmation": "J'ai enregistré votre numéro de dossier SAAQ. Est-ce exact ?"
+    },
+    "no_accident": {
+      "value": "NONE",
+      "action": "continue_normal_workflow"
+    }
+  },
+  "ENTITY_EXTRACTION": {
+    "enabled": true,
+    "entities": [
+      "patient_status",
+      "full_name",
+      "date_of_birth",
+      "phone",
+      "email",
+      "ramq_number",
+      "address",
+      "family_doctor",
+      "accident_type",
+      "cnesst_claim_number",
+      "saaq_claim_number",
+      "service",
+      "reason",
+      "body_part",
+      "symptoms",
+      "appointment_date",
+      "appointment_time"
+    ],
+    "multi_entity_example": {
+      "patient_sentence": "Bonjour je suis Hedi Bennis, mon numéro est 4388334319 et je voudrais de la physiothérapie pour mon épaule droite.",
+      "extract": {
+        "full_name": "Hedi Bennis",
+        "phone": "4388334319",
+        "service": "physiotherapy",
+        "body_part": "right_shoulder"
+      },
+      "critical_rule": "Enregistrer toutes les entités détectées avant de poser la prochaine question."
+    }
+  },
+  "NO_REPETITION_ENGINE": {
+    "enabled": true,
+    "before_every_question": [
+      "lire conversation_state",
+      "lire patient_profile si utilisateur authentifié",
+      "chercher les informations déjà extraites",
+      "chercher les informations confirmées",
+      "déterminer les champs réellement manquants",
+      "poser uniquement la prochaine question nécessaire"
+    ],
+    "never_repeat": [
+      "patient_status",
+      "full_name",
+      "date_of_birth",
+      "phone",
+      "email",
+      "ramq_number",
+      "accident_type",
+      "cnesst_claim_number",
+      "saaq_claim_number"
+    ],
+    "unless": [
+      "le patient demande de modifier l'information",
+      "la donnée est invalidée",
+      "la donnée est contradictoire",
+      "une vérification de sécurité exige une nouvelle confirmation"
+    ]
+  },
+  "ASR_ERROR_HANDLING": {
+    "enabled": true,
+    "rules": [
+      "Ne jamais recommencer la conversation.",
+      "Ne jamais redemander toutes les informations.",
+      "Identifier le champ qui n'a pas été compris.",
+      "Demander uniquement ce champ.",
+      "Conserver toutes les informations déjà confirmées."
+    ],
+    "example": {
+      "patient": "H E D I",
+      "bad_response": "Je suis désolée, donnez-moi toutes vos informations.",
+      "correct_response": "Je n'ai pas bien compris votre prénom. Pouvez-vous l'épeler lettre par lettre ?"
+    }
+  },
+  "CONFLICT_HANDLING": {
+    "example": {
+      "stored": "Hedi Bennis",
+      "new_input": "Eddy Bennis"
+    },
+    "response": "J'ai déjà enregistré le prénom Hedi. Est-ce que vous souhaitez le modifier en Eddy ?",
+    "rule": "Ne jamais remplacer automatiquement une donnée confirmée."
+  },
+  "WORKFLOW": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "LANGUAGE",
+        "condition": "language unknown",
+        "question": "Quelle langue préférez-vous pour notre conversation : français, anglais ou arabe ?"
+      },
+      {
+        "step": 2,
+        "name": "PATIENT_STATUS",
+        "condition": "patient_status unknown",
+        "question": "Êtes-vous déjà patient chez nous ou est-ce votre première visite ?"
+      },
+      {
+        "step": 3,
+        "name": "FULL_NAME",
+        "condition": "full_name unknown",
+        "question": "Pouvez-vous me donner votre prénom et votre nom de famille ?"
+      },
+      {
+        "step": 4,
+        "name": "DATE_OF_BIRTH",
+        "condition": "date_of_birth unknown",
+        "question": "Quelle est votre date de naissance ?"
+      },
+      {
+        "step": 5,
+        "name": "PHONE",
+        "condition": "phone unknown",
+        "question": "Quel est votre numéro de téléphone ?"
+      },
+      {
+        "step": 6,
+        "name": "EMAIL",
+        "condition": "email unknown",
+        "question": "Quelle est votre adresse courriel ?"
+      },
+      {
+        "step": 7,
+        "name": "RAMQ",
+        "condition": "ramq_number unknown and required_by_clinic",
+        "question": "Quel est votre numéro d'assurance maladie ?"
+      },
+      {
+        "step": 8,
+        "name": "ACCIDENT",
+        "condition": "appointment_reason indicates possible accident",
+        "question": "Est-ce lié à un accident de travail ou à un accident de la route ?"
+      },
+      {
+        "step": 9,
+        "name": "CLAIM_NUMBER",
+        "condition": "accident_type is CNESST or SAAQ",
+        "question": "Avez-vous votre numéro de dossier ou de réclamation ?"
+      },
+      {
+        "step": 10,
+        "name": "SERVICE",
+        "condition": "service unknown",
+        "question": "Quel service souhaitez-vous consulter ?"
+      },
+      {
+        "step": 11,
+        "name": "REASON",
+        "condition": "reason unknown",
+        "question": "Pouvez-vous m'expliquer brièvement la raison de votre rendez-vous ?"
+      },
+      {
+        "step": 12,
+        "name": "CALENDAR",
+        "action": "search_available_practitioners_and_slots"
+      },
+      {
+        "step": 13,
+        "name": "OFFER_SLOTS",
+        "action": "offer_three_available_dates_and_times"
+      },
+      {
+        "step": 14,
+        "name": "PATIENT_SELECTION",
+        "action": "save_selected_slot"
+      },
+      {
+        "step": 15,
+        "name": "FINAL_CONFIRMATION",
+        "action": "confirm_appointment"
+      },
+      {
+        "step": 16,
+        "name": "NOTIFICATIONS",
+        "action": [
+          "send_email_confirmation",
+          "send_sms_confirmation",
+          "update_patient_account",
+          "update_clinic_dashboard"
+        ]
+      }
+    ]
+  },
+  "DYNAMIC_QUESTIONNAIRE": {
+    "rule": "Ne poser que les questions nécessaires au service sélectionné.",
+    "physiotherapy": {
+      "questions": [
+        "Quelle partie du corps souhaitez-vous faire évaluer ?",
+        "Depuis combien de temps avez-vous ce problème ?",
+        "Est-ce une douleur, une blessure ou une limitation de mouvement ?",
+        "Est-ce lié à un accident de travail ou de la route ?"
+      ]
+    },
+    "occupational_therapy": {
+      "questions": [
+        "Quelle difficulté souhaitez-vous faire évaluer ?",
+        "Depuis combien de temps avez-vous cette difficulté ?",
+        "Est-ce que cela affecte vos activités quotidiennes ?"
+      ]
+    },
+    "nutrition": {
+      "questions": [
+        "Quel est le principal motif de votre consultation en nutrition ?",
+        "S'agit-il d'un suivi ou d'une première consultation ?"
+      ]
+    },
+    "pediatrics": {
+      "questions": [
+        "Le rendez-vous concerne-t-il un enfant ?",
+        "Quel est le nom de l'enfant ?",
+        "Quelle est sa date de naissance ?",
+        "Quel est le motif principal de la consultation ?"
+      ]
+    }
+  },
+  "DATABASE_SYNC": {
+    "save_immediately_after_confirmation": true,
+    "patient": {
+      "fields": [
+        "patient_id",
+        "full_name",
+        "date_of_birth",
+        "phone",
+        "email",
+        "ramq_number",
+        "address",
+        "family_doctor"
+      ]
+    },
+    "insurance": {
+      "fields": [
+        "accident_type",
+        "cnesst_claim_number",
+        "saaq_claim_number",
+        "private_insurance"
+      ]
+    },
+    "appointment": {
+      "fields": [
+        "appointment_id",
+        "patient_id",
+        "service",
+        "practitioner_id",
+        "date",
+        "time",
+        "status",
+        "reason",
+        "coverage_type"
+      ]
+    },
+    "audit": {
+      "enabled": true,
+      "record": [
+        "timestamp",
+        "patient_id",
+        "field_changed",
+        "old_value",
+        "new_value",
+        "source",
+        "confirmed_by_patient"
+      ]
+    }
+  },
+  "SECURITY": {
+    "sensitive_data": [
+      "ramq_number",
+      "cnesst_claim_number",
+      "saaq_claim_number",
+      "medical_information",
+      "date_of_birth"
+    ],
+    "rules": [
+      "Ne pas afficher les numéros complets dans les logs.",
+      "Masquer les données sensibles dans l'interface lorsque nécessaire.",
+      "Ne jamais lire à voix haute un numéro sensible complet après son enregistrement.",
+      "Vérifier l'identité du patient avant de révéler des informations de dossier.",
+      "Conserver un journal d'audit des modifications.",
+      "Utiliser le principe du moindre privilège pour l'accès aux données."
+    ]
+  },
+  "VOICE_RESPONSE_STYLE": {
+    "language": "fr-CA",
+    "style": [
+      "naturel",
+      "court",
+      "professionnel",
+      "chaleureux",
+      "rassurant"
+    ],
+    "rules": [
+      "Une question principale à la fois.",
+      "Ne pas réciter des informations déjà connues.",
+      "Ne pas répéter le nom de la clinique à chaque réponse.",
+      "Ne pas recommencer par Bonjour à chaque étape.",
+      "Ne pas dire systématiquement Merci après chaque champ.",
+      "Utiliser des transitions naturelles.",
+      "Adapter la longueur des réponses au contexte."
+    ],
+    "example": {
+      "bad": "Bienvenue à la Clinique Santé Montréal. Je suis Houda. Pouvez-vous me confirmer si vous êtes un nouveau patient ou si vous avez déjà une fiche médicale ?",
+      "good": "Parfait. J'ai compris que vous êtes déjà patient chez nous. Pouvez-vous me donner votre prénom et votre nom ?"
+    }
+  },
+  "FINAL_CONFIRMATION": {
+    "rule": "Ne résumer que les informations pertinentes pour le rendez-vous et les informations nouvelles ou modifiées.",
+    "example": "Parfait. Votre rendez-vous de physiothérapie est prévu mercredi 12 août à 10 h avec Shaheer Haider. Il est enregistré comme dossier CNESST. Je vous envoie maintenant la confirmation par SMS et par courriel.",
+    "do_not_repeat": [
+      "nom complet si déjà confirmé",
+      "téléphone si déjà confirmé",
+      "email si déjà confirmé",
+      "RAMQ si déjà confirmé"
+    ]
+  },
+  "SUCCESS_CRITERIA": {
+    "conversation_must": [
+      "conserver le contexte",
+      "conserver toutes les données confirmées",
+      "normaliser les données vocales",
+      "comprendre les abréviations",
+      "comprendre les chiffres prononcés",
+      "comprendre les noms épelés",
+      "comprendre les emails dictés",
+      "comprendre les numéros d'assurance dictés",
+      "détecter CNESST",
+      "détecter SAAQ",
+      "ne jamais répéter inutilement",
+      "ne jamais recommencer le workflow",
+      "synchroniser le dossier patient",
+      "synchroniser le calendrier",
+      "synchroniser le dashboard clinique"
+    ],
+    "test_case": {
+      "conversation": [
+        "Je suis déjà patient chez vous.",
+        "Hedi Bennis.",
+        "7 janvier 1971.",
+        "4388334319.",
+        "hedi arobase exemple point com.",
+        "ABCD12345678.",
+        "Je veux une physiothérapie pour mon épaule droite.",
+        "C'est un accident de travail.",
+        "CNESST 12345678."
+      ],
+      "expected_state": {
+        "patient_status": "EXISTING_PATIENT",
+        "full_name": "Hedi Bennis",
+        "date_of_birth": "1971-01-07",
+        "phone": "4388334319",
+        "email": "hedi@exemple.com",
+        "ramq_number": "ABCD12345678",
+        "service": "physiotherapy",
+        "body_part": "right_shoulder",
+        "accident_type": "CNESST",
+        "cnesst_claim_number": "12345678"
+      },
+      "expected_behavior": "Après confirmation de ces informations, VITARA ne doit plus poser aucune question concernant le nom, téléphone, courriel, RAMQ ou statut patient. Il doit poursuivre uniquement avec les informations manquantes nécessaires au rendez-vous."
+    }
+  },
+  "CLAUDE_IMPLEMENTATION_INSTRUCTION": {
+    "priority": "CRITICAL",
+    "instruction": "Remplace le workflow vocal actuel par cette architecture. Ne corrige pas uniquement les textes affichés. Implémente réellement Conversation Memory, Entity Extraction, Field Status, Normalization, Deduplication et Workflow State. Chaque tour de conversation doit mettre à jour conversation_state AVANT de générer la prochaine réponse. Avant toute question, vérifier les champs déjà CONFIRMED. Si une donnée existe déjà, passer automatiquement à la prochaine donnée manquante. En cas d'erreur ASR, ne jamais recommencer le workflow. Demander uniquement la donnée incomprise. Les boutons de l'interface doivent également écrire directement dans conversation_state. Le système doit fonctionner avec le chat vocal, le téléphone et le compte patient connecté."
+  }
+}
