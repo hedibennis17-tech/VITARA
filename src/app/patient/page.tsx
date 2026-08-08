@@ -486,11 +486,16 @@ export default function PatientPage() {
       greeted.current = true;
       setMsgs([]); setHist([]); histRef.current = [];
       setBooking(null); setSlots(null); setSel(null);
+
+      // Genre de l'agent — said et alain = masculin, houda et hayet = féminin
+      const isMale = a.id === 'said' || a.id === 'alain';
       const g = l === 'fr'
-        ? `Bonjour ! Je suis ${a.name}, votre assistante médicale. Êtes-vous un nouveau patient ou avez-vous déjà un dossier chez nous ?`
+        ? `Bonjour ! Je suis ${a.name}, votre ${isMale ? 'assistant médical' : 'assistante médicale'}. Êtes-vous un nouveau patient ou avez-vous déjà un dossier chez nous ?`
         : l === 'en'
         ? `Hello! I'm ${a.name}, your medical assistant. Are you a new or existing patient?`
-        : `مرحباً! أنا ${a.name}، مساعدتك الطبية. هل أنت مريض جديد؟`;
+        : isMale
+          ? `مرحباً! أنا ${a.name}، مساعدك الطبي. هل أنت مريض جديد؟`
+          : `مرحباً! أنا ${a.name}، مساعدتك الطبية. هل أنت مريض جديد؟`;
       // BUG FIX: le greeting va dans msgs (affichage) mais PAS dans hist
       // Groq rejette si messages[0].role === 'assistant'
       // hist reste vide → le premier appel API aura messages[0].role === 'user' ✓
