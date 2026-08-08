@@ -238,7 +238,8 @@ export default function PatientPage() {
   const histRef    = useRef(hist);
   const langRef    = useRef(lang);
   const agentRef   = useRef(agent);
-  const voiceMap   = useRef<Record<string, SpeechSynthesisVoice | null>>({}); // voice_id par agent
+  const voiceMap   = useRef<Record<string, SpeechSynthesisVoice | null>>({});
+  const convState  = useRef<Record<string,any>>({}); // Conversation Memory v3.0
 
   useEffect(() => {
     const s = document.createElement('style');
@@ -373,11 +374,12 @@ export default function PatientPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages:   safeHist,
-          language:   currentLang,
-          max_tokens: 600,
-          agent:      agentRef.current.id,   // 'houda' | 'said' | 'hayet' | 'alain'
-          gender:     agentRef.current.id === 'said' || agentRef.current.id === 'alain' ? 'male' : 'female',
+          messages:           safeHist,
+          language:           currentLang,
+          max_tokens:         500,
+          agent:              agentRef.current.id,
+          gender:             agentRef.current.id === 'said' || agentRef.current.id === 'alain' ? 'male' : 'female',
+          conversation_state: convState.current,  // ← Envoyer l'état actuel
         }),
       });
 
@@ -387,6 +389,16 @@ export default function PatientPage() {
 
       let parsed: any;
       try { parsed = JSON.parse(raw); } catch { parsed = { speak: raw, intent: 'info' }; }
+
+      // ── Mettre à jour Conversation Memory ────────────────────
+      // L'IA retourne les champs extraits dans parsed.state
+      if (parsed.state && typeof parsed.state === 'object' && Object.keys(parsed.state).length > 0) {
+        convState.current = { ...convState.current, ...parsed.state };
+      }
+      // L'API retourne aussi conversation_state mis à jour côté serveur
+      if (data.conversation_state && typeof data.conversation_state === 'object') {
+        convState.current = { ...convState.current, ...data.conversation_state };
+      }
 
       if (data.code === 'NO_API_KEY') {
         setMsgs(p => [...p, { role: 'ai', text: '⚠️ Clé GROQ_API_KEY manquante sur Vercel' }]);
@@ -507,6 +519,7 @@ export default function PatientPage() {
       greeted.current = true;
       setMsgs([]); setHist([]); histRef.current = [];
       setBooking(null); setSlots(null); setSel(null);
+      convState.current = {}; // Reset Conversation Memory pour nouvelle session
 
       // Genre de l'agent — said et alain = masculin, houda et hayet = féminin
       const isMale = a.id === 'said' || a.id === 'alain';

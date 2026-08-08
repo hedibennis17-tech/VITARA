@@ -1,59 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { retrieveContext, buildSystemPrompt } from '@/lib/knowledge/rag';
+import { ConversationState, mergeState, INITIAL_STATE } from '@/lib/conversation/state';
 
 export const maxDuration = 30;
+const MODEL_PRIMARY  = 'llama-3.1-8b-instant';
+const MODEL_FALLBACK = 'llama-3.3-70b-versatile';
 
-const MODEL_PRIMARY  = 'llama-3.1-8b-instant';   // 500K tokens/jour
-const MODEL_FALLBACK = 'llama-3.3-70b-versatile'; // fallback
-
-// ── Attente intelligente sur TPM 429 ─────────────────────────
-function extractRetryAfter(errorMsg: string): number {
-  // "Please try again in 5.49s" ou "14m1.536s"
-  const secMatch = errorMsg.match(/in (\d+\.?\d*)s/);
-  const minMatch = errorMsg.match(/in (\d+)m(\d+\.?\d*)s/);
-  if (minMatch) return (parseInt(minMatch[1]) * 60 + parseFloat(minMatch[2])) * 1000;
-  if (secMatch)  return parseFloat(secMatch[1]) * 1000;
-  return 5000; // défaut 5s
+function extractRetryAfter(msg: string): number {
+  const m = msg.match(/in (\d+)m(\d+\.?\d*)s/);
+  const s = msg.match(/in (\d+\.?\d*)s/);
+  if (m) return (parseInt(m[1]) * 60 + parseFloat(m[2])) * 1000;
+  if (s) return parseFloat(s[1]) * 1000;
+  return 5000;
 }
-
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 export async function POST(req: NextRequest) {
   try {
     const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: 'GROQ_API_KEY manquante', code: 'NO_API_KEY' }, { status: 500 });
-    }
+    if (!apiKey) return NextResponse.json({ error: 'GROQ_API_KEY manquante', code: 'NO_API_KEY' }, { status: 500 });
 
     const body = await req.json() as {
-      messages:  { role: string; content: string }[];
-      language?: string;
-      max_tokens?: number;
-      agent?:    string;   // 'houda' | 'said' | 'hayet' | 'alain'
-      gender?:   'female' | 'male';
+      messages:          { role: string; content: string }[];
+      language?:         string;
+      max_tokens?:       number;
+      agent?:            string;
+      gender?:           'female'|'male';
+      conversation_state?: Partial<ConversationState>;
     };
-    const { messages, language = 'fr', max_tokens = 500, agent = 'houda', gender = 'female' } = body;
+    const { messages, language = 'fr', max_tokens = 500, agent = 'houda', gender = 'female', conversation_state } = body;
 
-    // ── Historique propre: max 10 messages, commence par user ─
-    const trimmed     = messages.slice(-10);
+    const trimmed      = messages.slice(-10);
     const safeMessages = trimmed[0]?.role !== 'user' ? trimmed.slice(1) : trimmed;
-
-    // ── RAG léger ─────────────────────────────────────────────
     const lastUser     = [...safeMessages].reverse().find(m => m.role === 'user')?.content || '';
     const ragResult    = retrieveContext(lastUser, safeMessages);
     const detectedLang = ragResult.detectedLang || language;
-    const systemPrompt = buildSystemPrompt(detectedLang, ragResult.context, agent, gender);
 
-    // ── Appel Groq avec retry automatique sur TPM ─────────────
+    // Reconstruire l'état complet depuis le partiel reçu
+    const currentState: ConversationState = conversation_state
+      ? mergeState(INITIAL_STATE, conversation_state as ConversationState)
+      : INITIAL_STATE;
+
+    const systemPrompt = buildSystemPrompt(detectedLang, ragResult.context, agent, gender, currentState);
+
     async function callGroq(model: string) {
       return fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
         body: JSON.stringify({
-          model,
-          max_tokens,
+          model, max_tokens,
           messages: [{ role: 'system', content: systemPrompt }, ...safeMessages],
-          temperature: 0.4,
+          temperature: 0.3,  // Plus bas = plus cohérent pour le suivi d'état
           response_format: { type: 'json_object' },
         }),
       });
@@ -62,54 +59,49 @@ export async function POST(req: NextRequest) {
     let response = await callGroq(MODEL_PRIMARY);
     let data     = await response.json() as any;
 
-    // TPM 429 → wait + retry (max 12 secondes d'attente)
+    // TPM 429 → retry
     if (response.status === 429 && data.error?.message?.includes('per minute')) {
       const waitMs = extractRetryAfter(data.error.message);
-      if (waitMs <= 12000) {
-        console.log(`[VITARA] TPM 429 — attente ${waitMs}ms puis retry`);
-        await sleep(waitMs + 500);
-        response = await callGroq(MODEL_PRIMARY);
-        data     = await response.json() as any;
-      }
+      if (waitMs <= 12000) { await sleep(waitMs + 500); response = await callGroq(MODEL_PRIMARY); data = await response.json() as any; }
     }
-
-    // TPD 429 (quota jour épuisé) → essayer le fallback
+    // TPD 429 → fallback
     if (response.status === 429 && data.error?.message?.includes('per day')) {
-      console.warn('[VITARA] TPD épuisé sur 8b → fallback 70b');
       response = await callGroq(MODEL_FALLBACK);
-      data     = await response.json() as any;
-
-      // Si le fallback est aussi en 429 TPD → message clair
+      data = await response.json() as any;
       if (response.status === 429) {
-        const retryMin = data.error?.message?.match(/(\d+)m/)?.[1] || '30';
-        const fallback = detectedLang === 'ar'
-          ? `{"speak":"عذراً، تم الوصول إلى الحد اليومي. يرجى المحاولة بعد ${retryMin} دقيقة أو الاتصال: (514) 555-0100.","intent":"error","slots":null,"booking":null}`
-          : detectedLang === 'en'
-          ? `{"speak":"Daily AI limit reached. Please try again in ${retryMin} minutes or call (514) 555-0100.","intent":"error","slots":null,"booking":null}`
-          : `{"speak":"Limite quotidienne atteinte. Réessayez dans ${retryMin} minutes ou appelez le (514) 555-0100.","intent":"error","slots":null,"booking":null}`;
-        return NextResponse.json({ content: [{ type:'text', text: fallback }], rate_limit: true, retry_in_min: retryMin });
+        const min = data.error?.message?.match(/(\d+)m/)?.[1] || '30';
+        const fb = `{"speak":"Limite atteinte. Réessayez dans ${min} minutes ou appelez le (514) 555-0100.","intent":"error","state":{},"slots":null,"booking":null}`;
+        return NextResponse.json({ content: [{ type: 'text', text: fb }], rate_limit: true });
       }
     }
 
-    // Autre erreur Groq non-429
-    if (!response.ok && response.status !== 429) {
-      const fallback = `{"speak":"Erreur temporaire. Veuillez réessayer.","intent":"error","slots":null,"booking":null}`;
-      return NextResponse.json({ content: [{ type:'text', text: fallback }], groq_error: data.error?.message });
+    if (!response.ok) {
+      const fb = `{"speak":"Erreur temporaire. Veuillez réessayer.","intent":"error","state":{},"slots":null,"booking":null}`;
+      return NextResponse.json({ content: [{ type: 'text', text: fb }], groq_error: data.error?.message });
     }
 
     const text = data.choices?.[0]?.message?.content
-      || '{"speak":"Je suis là pour vous aider.","intent":"welcome","slots":null,"booking":null}';
+      || '{"speak":"Je vous écoute.","intent":"welcome","state":{},"slots":null,"booking":null}';
+
+    // Extraire l'état mis à jour retourné par l'IA
+    let updatedState: Partial<ConversationState> = {};
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed.state && typeof parsed.state === 'object') {
+        updatedState = mergeState(currentState, parsed.state as ConversationState);
+      }
+    } catch { /* ignore */ }
 
     return NextResponse.json({
       content: [{ type: 'text', text }],
-      model:   response.headers?.get('x-groq-model') || MODEL_PRIMARY,
+      model:   MODEL_PRIMARY,
       usage:   data.usage,
+      conversation_state: updatedState,
       rag:     { scenariosMatched: ragResult.scenarios.map(s => s.id), detectedDept: ragResult.detectedDept },
     });
 
   } catch (err) {
-    console.error('[VITARA AI]', err);
-    const fallback = '{"speak":"Erreur réseau. Veuillez réessayer.","intent":"error","slots":null,"booking":null}';
-    return NextResponse.json({ content: [{ type:'text', text: fallback }], code: 'SERVER_ERROR' });
+    const fb = '{"speak":"Erreur réseau. Veuillez réessayer.","intent":"error","state":{},"slots":null,"booking":null}';
+    return NextResponse.json({ content: [{ type: 'text', text: fb }], code: 'SERVER_ERROR' });
   }
 }
