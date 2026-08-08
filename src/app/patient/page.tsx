@@ -239,7 +239,8 @@ export default function PatientPage() {
   const langRef    = useRef(lang);
   const agentRef   = useRef(agent);
   const voiceMap   = useRef<Record<string, SpeechSynthesisVoice | null>>({});
-  const convState  = useRef<Record<string,any>>({}); // Conversation Memory v3.0
+  const convState  = useRef<Record<string,any>>({});
+  const skipDisplay = useRef(false); // évite double affichage msg patient (startSession + sendMsg)
 
   useEffect(() => {
     const s = document.createElement('style');
@@ -362,7 +363,13 @@ export default function PatientPage() {
     const um = { role: 'user', content: txt };
     const fullHist = [...histRef.current, um];
     setHist(fullHist); histRef.current = fullHist;
-    setMsgs(p => [...p, { role: 'patient', text: txt }]);
+
+    // N'ajouter le message au chat QUE si startSession ne l'a pas déjà affiché
+    if (skipDisplay.current) {
+      skipDisplay.current = false; // reset pour les prochains messages
+    } else {
+      setMsgs(p => [...p, { role: 'patient', text: txt }]);
+    }
     setInp(''); setLoad(true); setVState('thinking');
 
     try {
@@ -534,14 +541,19 @@ export default function PatientPage() {
       // Groq rejette si messages[0].role === 'assistant'
       // hist reste vide → le premier appel API aura messages[0].role === 'user' ✓
       if (initialMsg) {
-        // Service card: afficher le message patient D'ABORD, puis la réponse de l'agent
-        setMsgs([{ role: 'patient', text: initialMsg }, { role: 'ai', text: g }]);
+        // Service card: afficher le message patient SEULEMENT
+        // Le greeting est parlé vocalement mais PAS ajouté au chat ici
+        // sendMsg ajoutera la réponse de l'agent comme 1er message chat
+        setMsgs([{ role: 'patient', text: initialMsg }]);
+        skipDisplay.current = true; // sendMsg ne doit PAS rajouter le même message
+        // Parler le greeting vocalement avec un léger délai
+        setTimeout(() => speak(g), 300);
       } else {
-        // Chat direct: afficher le greeting d'abord
+        // Chat direct (mic ou bouton): afficher le greeting dans le chat
         setMsgs([{ role: 'ai', text: g }]);
+        setTimeout(() => speak(g), 500);
       }
       setHist([]); histRef.current = [];
-      setTimeout(() => speak(g), 500);
     }
   }, [speak]);
 
