@@ -50,36 +50,50 @@ const AGENT_POS: Record<string,string> = {
 };
 
 // ── VOIX par agent ────────────────────────────────────────────
-// gender: 'female' | 'male'
-// pitch/rate: caractère propre à chaque agent
-const AGENT_VOICE: Record<string, {
-  gender: 'female'|'male';
-  pitch:  number;  // 0.5–2.0 (1.0 = normal)
-  rate:   number;  // 0.5–2.0 (1.0 = normal)
-  // Noms de voix connus par navigateur (fallback order)
-  preferredNames: string[];
-}> = {
-  houda: {
-    gender: 'female', pitch: 1.15, rate: 0.88,
-    // Voix féminine douce (FR/AR)
-    preferredNames: ['Amélie','Audrey','Virginie','Marie','Samantha','Google français'],
-  },
-  said: {
-    gender: 'male', pitch: 0.85, rate: 0.95,
-    // Voix masculine assurée (FR/AR/EN)
-    preferredNames: ['Thomas','Nicolas','Google français masculine','Google US English','Daniel'],
-  },
-  alain: {
-    gender: 'male', pitch: 0.75, rate: 0.92,
-    // Voix masculine grave/posée (plus âgée)
-    preferredNames: ['Thomas','Nicolas','Daniel','Alex','Google UK English Male'],
-  },
-  hayet: {
-    gender: 'female', pitch: 1.08, rate: 0.94,
-    // Voix féminine dynamique (FR/EN)
-    preferredNames: ['Amélie','Audrey','Karen','Moira','Google UK English Female','Virginie'],
-  },
+const FEMALE_NAMES = ['amélie','audrey','virginie','marie','samantha','karen','moira','fiona','victoria','tessa','alice','julie','google uk english female','female','femme','alice','anna'];
+const MALE_NAMES   = ['thomas','nicolas','daniel','alex','oliver','james','luca','henrik','google uk english male','male','homme'];
+
+function detectGender(voice: SpeechSynthesisVoice): 'female'|'male'|'unknown' {
+  const n = voice.name.toLowerCase();
+  if (MALE_NAMES.some(k   => n.includes(k))) return 'male';
+  if (FEMALE_NAMES.some(k => n.includes(k))) return 'female';
+  return 'unknown';
+}
+
+const AGENT_VOICE: Record<string, { gender:'female'|'male'; pitch:number; rate:number }> = {
+  houda: { gender:'female', pitch: 1.30, rate: 0.88 }, // clairement féminin
+  said:  { gender:'male',   pitch: 0.55, rate: 0.95 }, // clairement masculin
+  alain: { gender:'male',   pitch: 0.48, rate: 0.92 }, // encore plus grave
+  hayet: { gender:'female', pitch: 1.22, rate: 0.94 }, // féminin vif
 };
+
+function pickVoice(
+  voices: SpeechSynthesisVoice[],
+  langCode: string,
+  gender: 'female'|'male'
+): SpeechSynthesisVoice | undefined {
+  // Voix de la bonne langue
+  const byLang = voices.filter(v => v.lang.toLowerCase().startsWith(langCode.toLowerCase()));
+  const pool   = byLang.length > 0 ? byLang : voices;
+
+  // 1. Correspondance exacte de genre
+  const exact = pool.filter(v => detectGender(v) === gender);
+  if (exact.length > 0) return exact[0];
+
+  // 2. Exclure le genre opposé
+  const opposite = gender === 'male' ? 'female' : 'male';
+  const notOpposite = pool.filter(v => detectGender(v) !== opposite);
+  if (notOpposite.length > 0) {
+    // Pour male: prendre la dernière (souvent masculine sur Android)
+    // Pour female: prendre la première
+    return gender === 'male'
+      ? notOpposite[notOpposite.length - 1]
+      : notOpposite[0];
+  }
+
+  // 3. Dernier recours: première de la langue, pitch compensera
+  return pool[0];
+}
 
 function Avatar({ id, size=200, talking=false, color='#00D7C8' }: any) {
   const src = AGENT_PHOTO[id] || AGENT_PHOTO.houda;
@@ -197,48 +211,20 @@ export default function PatientPage() {
       const l   = langRef.current;
       const cfg = AGENT_VOICE[agentRef.current.id] || AGENT_VOICE.houda;
 
-      // ── Langue de l'utterance ──────────────────────────────
+      // Langue
       u.lang  = l === 'ar' ? 'ar-SA' : l === 'en' ? 'en-US' : 'fr-FR';
-      // ── Caractère vocal de l'agent ─────────────────────────
+      const langCode = l === 'ar' ? 'ar' : l === 'en' ? 'en' : 'fr';
+
+      // Pitch/rate propre à l'agent (très différenciés)
       u.pitch = cfg.pitch;
       u.rate  = cfg.rate;
 
-      // ── Sélection de la meilleure voix disponible ──────────
+      // Sélection de voix
       const voices = synthRef.current.getVoices();
-
-      // 1. Chercher par nom préféré (spécifique à l'agent)
-      let chosen = voices.find(v =>
-        cfg.preferredNames.some(n => v.name.toLowerCase().includes(n.toLowerCase()))
-      );
-
-      // 2. Chercher par langue + genre
-      if (!chosen) {
-        const byLang = voices.filter(v => v.lang.startsWith(
-          l === 'ar' ? 'ar' : l === 'en' ? 'en' : 'fr'
-        ));
-        if (byLang.length > 0) {
-          // Heuristique genre: voix "female" contiennent souvent Female/f/she dans le nom
-          const femaleKeywords = ['female','femme','amélie','audrey','virginie','karen','moira','samantha','fiona','victoria','tessa'];
-          const maleKeywords   = ['male','homme','thomas','nicolas','daniel','alex','oliver','james','luca'];
-          chosen = byLang.find(v => {
-            const n = v.name.toLowerCase();
-            return cfg.gender === 'female'
-              ? femaleKeywords.some(k => n.includes(k))
-              : maleKeywords.some(k => n.includes(k));
-          });
-          // 3. Fallback: premier de la langue disponible + forcer pitch pour le genre
-          if (!chosen) {
-            chosen = byLang[cfg.gender === 'female' ? 0 : Math.min(1, byLang.length - 1)];
-            // Compenser si mauvais genre détecté: inverser pitch
-            if (cfg.gender === 'male'   && u.pitch > 1.0) u.pitch = 0.82;
-            if (cfg.gender === 'female' && u.pitch < 1.0) u.pitch = 1.12;
-          }
-        }
+      if (voices.length > 0) {
+        const chosen = pickVoice(voices, langCode, cfg.gender);
+        if (chosen) u.voice = chosen;
       }
-
-      // 4. Dernier fallback: n'importe quelle voix
-      if (!chosen && voices.length > 0) chosen = voices[0];
-      if (chosen) u.voice = chosen;
 
       u.onstart = () => setVState('speaking');
       u.onend   = () => setVState('idle');
