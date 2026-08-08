@@ -19,7 +19,9 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 
   if (PUB_PAGE.some(p => pathname.startsWith(p))) return NextResponse.next();
 
+  // Racine '/' sans session → /patient (fix lien Facebook/Messenger qui coupe le path)
   const t = req.cookies.get('vitara_access_token')?.value;
+  if (pathname === '/' && !t) return NextResponse.redirect(new URL('/patient', req.url));
   if (!t) return NextResponse.redirect(new URL('/login', req.url));
   const p = await verifyAccessToken(t);
   if (!p) { const r = NextResponse.redirect(new URL('/login', req.url)); r.cookies.delete('vitara_access_token'); return r; }
