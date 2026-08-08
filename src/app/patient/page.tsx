@@ -596,9 +596,28 @@ export default function PatientPage() {
         {/* Agent selector */}
         <div style={{padding:'9px 18px 0'}}>
           <button onClick={()=>setScreen('agents')} style={{width:'100%',padding:'11px 14px',background:T.glass,border:`1px solid ${T.border}`,borderRadius:12,backdropFilter:'blur(12px)',display:'flex',alignItems:'center',gap:10,cursor:'pointer',textAlign:'left'}}>
-            <div style={{display:'flex'}}>{AGENTS.map((a,i)=>(
-              <div key={a.id} style={{width:23,height:23,borderRadius:'50%',background:`linear-gradient(135deg,${a.color},${a.color}80)`,border:`2px solid ${T.bg}`,marginLeft:i?-6:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10}}>{a.badge}</div>
-            ))}</div>
+            {/* Vraies photos rondes superposées */}
+            <div style={{display:'flex',alignItems:'center'}}>
+              {AGENTS.map((a,i)=>{
+                const ext=a.id==='hayet'?'jpg':'png';
+                return (
+                  <div key={a.id} style={{
+                    width:30,height:30,borderRadius:'50%',
+                    border:`2px solid ${T.bg}`,
+                    marginLeft:i?-9:0,
+                    overflow:'hidden',
+                    background:T.s2,
+                    flexShrink:0,
+                    boxShadow:`0 0 0 1px ${a.color}66`,
+                  }}>
+                    <img src={`/agents/${a.id}.${ext}`} alt={a.name}
+                      style={{width:'100%',height:'100%',objectFit:'cover',
+                        objectPosition:a.id==='houda'?'center 20%':a.id==='said'?'center 12%':a.id==='alain'?'center 15%':'center 18%'
+                      }}/>
+                  </div>
+                );
+              })}
+            </div>
             <div style={{flex:1}}>
               <div style={{fontSize:12,fontWeight:600,color:T.text,fontFamily:"'Space Grotesk',sans-serif"}}>Choisir votre agent</div>
               <div style={{fontSize:10,color:T.muted,marginTop:1}}>Houda · Said · Hayet · Alain · FR EN AR</div>
@@ -1176,19 +1195,49 @@ function NavBar({ active, T, onMic, onNav, inChat }:any) {
   const items = [
     {id:'home',icon:'🏠',label:'Accueil'},
     {id:'rdv', icon:'📅',label:'RDV'},
-    {id:'mic', icon:'🎤',label:'',special:true},
+    {id:'mic', label:'',special:true},
     {id:'svc', icon:'🩺',label:'Services'},
     {id:'prof',icon:'👤',label:'Profil'},
   ];
   return (
-    <div style={{position:'fixed',bottom:0,left:'50%',transform:'translateX(-50%)',width:'100%',maxWidth:420,padding:'5px 16px 11px',background:T.glass,borderTop:`1px solid ${T.border}`,backdropFilter:'blur(16px)',display:'flex',alignItems:'center',justifyContent:'space-around',zIndex:100}}>
+    <div style={{position:'fixed',bottom:0,left:'50%',transform:'translateX(-50%)',width:'100%',maxWidth:420,
+      padding:'0 10px 10px',background:T.glass,borderTop:`1px solid ${T.border}`,backdropFilter:'blur(20px)',
+      display:'flex',alignItems:'flex-end',justifyContent:'space-around',zIndex:100,height:64}}>
       {items.map(item=>(
         item.special
-          ? <button key="mic" onClick={onMic} style={{width:50,height:50,borderRadius:'50%',background:`linear-gradient(135deg,#00D7C8,#8B5CF6)`,border:`3px solid transparent`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:19,cursor:'pointer',boxShadow:'0 4px 14px rgba(0,215,200,.45)',marginTop:-13}}>🎤</button>
-          : <button key={item.id} onClick={()=>onNav(item.id)} style={{background:'none',border:'none',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:2,padding:'4px 5px'}}>
-              <span style={{fontSize:17,opacity:active===item.id?1:.45}}>{item.icon}</span>
-              <span style={{fontSize:9,color:active===item.id?T.teal:T.muted,fontWeight:active===item.id?600:400}}>{item.label}</span>
+          ? (
+            /* ── Bouton mic — vrai cercle flottant surélevé ── */
+            <div key="mic-wrap" style={{display:'flex',flexDirection:'column',alignItems:'center',marginBottom:4}}>
+              <button onClick={onMic} style={{
+                width:58,height:58,borderRadius:'50%',
+                background:'linear-gradient(135deg,#00D7C8,#8B5CF6)',
+                border:'none',
+                display:'flex',alignItems:'center',justifyContent:'center',
+                cursor:'pointer',
+                /* Surélevé au dessus de la barre */
+                marginTop:-36,
+                boxShadow:'0 6px 24px rgba(0,215,200,0.55), 0 2px 8px rgba(0,0,0,0.3)',
+                position:'relative',
+                flexShrink:0,
+              }}>
+                {/* Cercle intérieur blanc subtil */}
+                <div style={{
+                  position:'absolute',inset:4,borderRadius:'50%',
+                  background:'rgba(255,255,255,0.12)',
+                }}/>
+                <span style={{fontSize:22,position:'relative',zIndex:1}}>🎤</span>
+              </button>
+              <span style={{fontSize:8,color:T.muted,marginTop:4,letterSpacing:'.04em'}}>VITARA</span>
+            </div>
+          )
+          : (
+            <button key={item.id} onClick={()=>onNav(item.id)}
+              style={{background:'none',border:'none',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:3,padding:'8px 8px 2px',flex:1}}>
+              <span style={{fontSize:18,opacity:active===item.id?1:.4,transition:'opacity .2s'}}>{item.icon}</span>
+              <span style={{fontSize:9,color:active===item.id?T.teal:T.muted,fontWeight:active===item.id?700:400,letterSpacing:'.02em'}}>{item.label}</span>
+              {active===item.id && <div style={{width:16,height:3,borderRadius:2,background:T.teal,marginTop:1}}/>}
             </button>
+          )
       ))}
     </div>
   );
