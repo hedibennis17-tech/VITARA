@@ -11,14 +11,18 @@ const AGENTS = [
   { id:'alain', name:'Alain', lang:'FR · EN',      color:'#16A34A', role:'Médecine institutionnelle',  langs:['fr','en'],     badge:'🏥' },
 ];
 
-const QUICK = [
-  { i:'📅', l:'Prendre rendez-vous',  m:'Je voudrais prendre un rendez-vous' },
-  { i:'🩺', l:'Physiothérapie',       m:"J'ai une douleur au genou depuis 2 semaines" },
-  { i:'👶', l:'Mon enfant est malade',m:"Mon enfant de 2 ans a de la fièvre" },
-  { i:'🦺', l:'Accident CNESST',      m:"J'ai eu un accident de travail, j'ai besoin de physiothérapie" },
-  { i:'❌', l:'Annuler un RDV',       m:'Je dois annuler mon rendez-vous' },
-  { i:'💊', l:'Renouvellement ordo',  m:"Je dois renouveler mon ordonnance" },
+// ── SERVICES HOME — vraies images par rubrique ───────────────
+const SERVICES_HOME = [
+  { id:'urgences',  title:'Urgences',            sub:'Appelez le 911 si vital',   img:'/services/urgences.png',  color:'#EF4444', urgent:true,  msg:"J'ai une urgence médicale",                                          full:true  },
+  { id:'pediatrie', title:'Pédiatrie',            sub:'Soins pour enfants',        img:'/services/pediatrie.jpg', color:'#EC4899', urgent:false, msg:"Mon enfant a besoin de soins médicaux",                              full:false },
+  { id:'rdv',       title:'Rendez-vous',          sub:'Prendre ou annuler',        img:'/services/rdv.jpg',       color:'#00D7C8', urgent:false, msg:"Je voudrais prendre un rendez-vous",                                 full:false },
+  { id:'cnesst',    title:'Accident de travail',  sub:'CNESST · SAAQ',             img:'/services/cnesst.jpg',    color:'#F9A826', urgent:false, msg:"J'ai eu un accident de travail, j'ai besoin de physiothérapie CNESST", full:false },
+  { id:'physio',    title:'Physiothérapie',       sub:'Réadaptation · Sport',      img:'/services/physio.jpg',    color:'#00E5A0', urgent:false, msg:"J'ai besoin de physiothérapie",                                      full:false },
+  { id:'medecins',  title:'Médecins de famille',  sub:'9 médecins GMF disponibles',img:'/services/medecins.jpg', color:'#8B5CF6', urgent:false, msg:"Je veux consulter un médecin de famille",                            full:true  },
 ];
+
+// Compatibilité avec les écrans Services et Messages rapides
+const QUICK = SERVICES_HOME.map(s => ({ i:'', l:s.title, m:s.msg }));
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap');
@@ -84,8 +88,8 @@ const VOICE_CONFIG: Record<string, {
     gender:'male', pitch:0.80, rate:0.92, volume:0.96, pauseMs:280,
     label:'Voix masculine',
     preview:{
-      fr:'Bonjour, je suis Said. Je vais vous aider à trouver le bon rendez-vous pour vous.',
-      en:"Hello, I'm Said. I'll help you find the right appointment.",
+      fr:'Bonjour, je suis Said, votre assistant médical VITARA. Je vais vous aider à trouver le bon rendez-vous.',
+      en:"Hello, I'm Said, your VITARA medical assistant. I'll help you find the right appointment.",
       ar:'مرحباً، أنا سعيد. سأساعدك في العثور على موعد مناسب.',
     },
   },
@@ -93,8 +97,8 @@ const VOICE_CONFIG: Record<string, {
     gender:'male', pitch:0.70, rate:0.90, volume:0.97, pauseMs:320,
     label:'Voix masculine mature',
     preview:{
-      fr:'Bonjour, je suis Alain. Je vais vérifier les disponibilités pour vous.',
-      en:"Hello, I'm Alain. I'll check the available appointments for you.",
+      fr:'Bonjour, je suis Alain, votre assistant VITARA. Je vais vérifier les disponibilités pour vous.',
+      en:"Hello, I'm Alain, your VITARA assistant. I'll check the available appointments for you.",
       ar:'مرحباً، أنا آلان. سأتحقق من المواعيد المتاحة.',
     },
   },
@@ -603,19 +607,63 @@ export default function PatientPage() {
           </button>
         </div>
 
-        {/* Accès rapide */}
-        <div style={{padding:'9px 18px 0'}}>
-          <div style={{fontSize:10,fontWeight:600,color:T.muted,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:7}}>Accès rapide</div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6}}>
-            {QUICK.map(q=>(
-              <button key={q.l}
-                onClick={()=>{ greeted.current=false; startSession(agent,'fr'); setTimeout(()=>sendMsg(q.m),700); }}
-                style={{padding:'10px 8px',background:T.glass,border:`1px solid ${T.border}`,borderRadius:10,backdropFilter:'blur(8px)',cursor:'pointer',textAlign:'left'}}>
-                <div style={{fontSize:16,marginBottom:3}}>{q.i}</div>
-                <div style={{fontSize:10,fontWeight:600,color:T.text,lineHeight:1.2}}>{q.l}</div>
+        {/* ── Rubriques services avec vraies images ── */}
+        <div style={{padding:'10px 14px 0'}}>
+          <div style={{fontSize:10,fontWeight:600,color:T.muted,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:10}}>Nos services</div>
+
+          {/* URGENCES — pleine largeur, rouge, proéminent */}
+          <button onClick={()=>{ greeted.current=false; startSession(agent,'fr'); setTimeout(()=>sendMsg("J'ai une urgence médicale"),700); }}
+            style={{width:'100%',height:90,borderRadius:14,overflow:'hidden',position:'relative',border:'none',cursor:'pointer',padding:0,marginBottom:8,display:'block'}}>
+            <img src="/services/urgences.png" alt="Urgences" style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center'}}/>
+            <div style={{position:'absolute',inset:0,background:'linear-gradient(to right,rgba(239,68,68,0.75),rgba(0,0,0,0.4))'}}/>
+            <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',padding:'0 20px',gap:12}}>
+              <span style={{fontSize:28}}>🚨</span>
+              <div style={{textAlign:'left'}}>
+                <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:18,fontWeight:800,color:'white',letterSpacing:'-.01em'}}>URGENCES</div>
+                <div style={{fontSize:11,color:'rgba(255,255,255,0.85)'}}>Appelez le 911 si situation vitale</div>
+              </div>
+            </div>
+            <div style={{position:'absolute',bottom:0,left:0,right:0,height:3,background:'#EF4444'}}/>
+          </button>
+
+          {/* Grille 2 colonnes */}
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+            {SERVICES_HOME.filter(s=>!s.full).map(s=>(
+              <button key={s.id}
+                onClick={()=>{ greeted.current=false; startSession(agent,'fr'); setTimeout(()=>sendMsg(s.msg),700); }}
+                style={{height:130,borderRadius:13,overflow:'hidden',position:'relative',border:'none',cursor:'pointer',padding:0}}>
+                <img src={s.img} alt={s.title} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top'}}/>
+                {/* Gradient sombre en bas */}
+                <div style={{position:'absolute',inset:0,background:'linear-gradient(to bottom,rgba(0,0,0,0.05) 30%,rgba(0,0,0,0.80) 100%)'}}/>
+                {/* Texte */}
+                <div style={{position:'absolute',bottom:10,left:11,right:11,textAlign:'left'}}>
+                  <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:12,fontWeight:700,color:'white',lineHeight:1.2}}>{s.title}</div>
+                  <div style={{fontSize:9,color:'rgba(255,255,255,0.75)',marginTop:2}}>{s.sub}</div>
+                </div>
+                {/* Barre couleur en bas */}
+                <div style={{position:'absolute',bottom:0,left:0,right:0,height:3,background:s.color}}/>
               </button>
             ))}
           </div>
+
+          {/* Médecins de famille — pleine largeur */}
+          {SERVICES_HOME.filter(s=>s.full && s.id!=='urgences').map(s=>(
+            <button key={s.id}
+              onClick={()=>{ greeted.current=false; startSession(agent,'fr'); setTimeout(()=>sendMsg(s.msg),700); }}
+              style={{width:'100%',height:110,borderRadius:13,overflow:'hidden',position:'relative',border:'none',cursor:'pointer',padding:0,marginTop:8,display:'block'}}>
+              <img src={s.img} alt={s.title} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center 20%'}}/>
+              <div style={{position:'absolute',inset:0,background:'linear-gradient(to right,rgba(139,92,246,0.75) 0%,rgba(0,0,0,0.3) 60%)'}}/>
+              <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',padding:'0 20px',gap:14}}>
+                <span style={{fontSize:26}}>👨‍⚕️</span>
+                <div style={{textAlign:'left'}}>
+                  <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:15,fontWeight:700,color:'white'}}>{s.title}</div>
+                  <div style={{fontSize:11,color:'rgba(255,255,255,0.82)'}}>{s.sub}</div>
+                </div>
+                <div style={{marginLeft:'auto',width:32,height:32,borderRadius:'50%',background:'rgba(255,255,255,0.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,color:'white'}}>→</div>
+              </div>
+              <div style={{position:'absolute',bottom:0,left:0,right:0,height:3,background:s.color}}/>
+            </button>
+          ))}
         </div>
       </div>
 
