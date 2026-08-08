@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import ClientLayout from '@/components/layout/ClientLayout';
 
-const URL = 'https://vitara-hedi-benniss-projects.vercel.app/patient';
+const SITE_URL = 'https://vitara-hedi-benniss-projects.vercel.app';
 
 export const metadata: Metadata = {
   title: 'VITARA — Clinique Médicale JOLIBOURG de Laval',
@@ -10,12 +10,12 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'VITARA — Clinique Médicale JOLIBOURG de Laval',
     description: 'Prenez rendez-vous avec votre agent médical IA. Service disponible 24h/7j.',
-    url: URL,
+    url: SITE_URL + '/patient',
     siteName: 'VITARA',
     locale: 'fr_CA',
     type: 'website',
   },
-  metadataBase: new URL('https://vitara-hedi-benniss-projects.vercel.app'),
+  metadataBase: new URL(SITE_URL),
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
