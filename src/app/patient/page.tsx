@@ -113,7 +113,7 @@ function ECG({ color='#00D7C8', op=.2 }:any) {
 // ── MAIN ─────────────────────────────────────────────────────
 export default function PatientPage() {
   const [mounted,  setMounted]    = useState(false);
-  const [screen,   setScreen]     = useState<'home'|'agents'|'chat'|'done'>('home');
+  const [screen,   setScreen]     = useState<'home'|'agents'|'chat'|'done'|'rdv'|'services'|'profil'>('home');
   const [theme,    setTheme]      = useState<'dark'|'light'>('dark');
   const [agent,    setAgent]      = useState(AGENTS[0]);
   const [lang,     setLang]       = useState('fr');
@@ -347,6 +347,33 @@ export default function PatientPage() {
   // ── RENDER HELPERS ────────────────────────────────────────
   const curAgent = AGENTS[aIdx];
 
+
+  // ── ÉCRANS NAVIGATION ────────────────────────────────────────
+  const navHandler = (v: string) => {
+    if (v==='home') setScreen('home');
+    if (v==='rdv')  setScreen('rdv');
+    if (v==='svc')  setScreen('services');
+    if (v==='prof') setScreen('profil');
+  };
+  const bookHandler = () => { greeted.current=false; startSession(agent,'fr'); };
+
+  if (screen === 'rdv') return (
+    <ScreenRdv T={T} onBack={()=>setScreen('home')} onBook={bookHandler} onNav={navHandler}/>
+  );
+
+  if (screen === 'services') return (
+    <ScreenServices T={T} onBack={()=>setScreen('home')} onBook={bookHandler} onNav={navHandler}
+      onSelectService={(msg:string)=>{
+        greeted.current=false;
+        startSession(agent, lang);
+        setTimeout(()=>sendMsg(msg), 700);
+      }}/>
+  );
+
+  if (screen === 'profil') return (
+    <ScreenProfil T={T} onBack={()=>setScreen('home')} onNav={navHandler} theme={theme} setTheme={setTheme}/>
+  );
+
   // ── HOME ─────────────────────────────────────────────────
   if (screen === 'home') return (
     <div style={{height:'100vh',background:T.bg,fontFamily:"'Inter',sans-serif",color:T.text,display:'flex',flexDirection:'column',maxWidth:420,margin:'0 auto'}}>
@@ -429,7 +456,12 @@ export default function PatientPage() {
 
       <NavBar active="home" T={T}
         onMic={()=>{ greeted.current=false; startSession(agent,'fr'); }}
-        onNav={v=>{ if(v==='rdv'){ greeted.current=false; startSession(agent,'fr'); }}}
+        onNav={(v:string)=>{
+          if(v==='rdv')     { setScreen('rdv'); }
+          if(v==='svc')     { setScreen('services'); }
+          if(v==='prof')    { setScreen('profil'); }
+          if(v==='home')    { setScreen('home'); }
+        }}
         inChat={false}/>
     </div>
   );
@@ -499,7 +531,10 @@ export default function PatientPage() {
           {AGENTS.map((_,i)=><div key={i} style={{width:i===aIdx?18:6,height:6,borderRadius:3,background:i===aIdx?AGENTS[aIdx].color:T.border,transition:'all .3s'}}/>)}
         </div>
       </div>
-      <NavBar active="agents" T={T} onMic={()=>{ greeted.current=false; startSession(curAgent,lang); }} onNav={()=>{}} inChat={false}/>
+      <NavBar active="agents" T={T}
+        onMic={()=>{ greeted.current=false; startSession(curAgent,lang); }}
+        onNav={(v:string)=>{ if(v==='home') setScreen('home'); if(v==='rdv') setScreen('rdv'); if(v==='svc') setScreen('services'); if(v==='prof') setScreen('profil'); }}
+        inChat={false}/>
     </div>
   );
 
@@ -690,7 +725,179 @@ export default function PatientPage() {
   );
 }
 
-// ── BOTTOM NAV ────────────────────────────────────────────────
+// ── ÉCRAN RDV ────────────────────────────────────────────────
+function ScreenRdv({ T, onBack, onBook, onNav }: any) {
+  const [appts, setAppts] = useState<any[]>([]);
+  useEffect(() => {
+    try { setAppts(JSON.parse(localStorage.getItem('vitara_appointments') || '[]')); } catch {}
+  }, []);
+  const STATUS: Record<string,[string,string]> = {
+    confirmed: [T.mint,'Confirmé'], scheduled: [T.teal,'Planifié'], completed:['#34D399','Complété'],
+  };
+  return (
+    <div style={{height:'100vh',background:T.bg,display:'flex',flexDirection:'column',maxWidth:420,margin:'0 auto',color:T.text,fontFamily:"'Inter',sans-serif"}}>
+      <div style={{padding:'14px 18px',display:'flex',alignItems:'center',gap:12,borderBottom:`1px solid ${T.border}`,flexShrink:0}}>
+        <button onClick={onBack} style={{background:'none',border:'none',cursor:'pointer',color:T.muted,fontSize:18}}>←</button>
+        <div style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:16,color:T.text,flex:1}}>Mes rendez-vous</div>
+        <button onClick={onBook} style={{padding:'7px 12px',background:`linear-gradient(135deg,${T.teal},${T.purple})`,border:'none',borderRadius:9,color:'white',fontSize:11,fontWeight:700,cursor:'pointer'}}>+ Nouveau</button>
+      </div>
+      <div style={{flex:1,overflowY:'auto',padding:'14px 16px 80px'}}>
+        {appts.length === 0 ? (
+          <div style={{textAlign:'center',padding:'60px 20px'}}>
+            <div style={{fontSize:48,marginBottom:16}}>📅</div>
+            <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:16,fontWeight:700,color:T.text,marginBottom:8}}>Aucun rendez-vous</div>
+            <div style={{fontSize:12,color:T.muted,marginBottom:24}}>Parlez à VITARA pour prendre un rendez-vous</div>
+            <button onClick={onBook} style={{padding:'13px 28px',background:`linear-gradient(135deg,${T.teal},${T.purple})`,border:'none',borderRadius:13,color:'white',fontSize:14,fontWeight:700,cursor:'pointer'}}>🎤 Parler à VITARA</button>
+          </div>
+        ) : (
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            {appts.map((a:any,i:number) => {
+              const [sc, sl] = STATUS[a.status] || [T.muted, a.status];
+              return (
+                <div key={i} style={{padding:'16px',background:T.s1,border:`1px solid ${T.border}`,borderRadius:14,borderLeft:`3px solid ${a.color||T.teal}`}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8}}>
+                    <div>
+                      <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:14,fontWeight:700,color:T.text}}>{a.type}</div>
+                      <div style={{fontSize:12,color:a.color||T.teal,fontWeight:600,marginTop:2}}>{a.date} · {a.time}</div>
+                    </div>
+                    <span style={{fontSize:10,padding:'2px 8px',background:`${sc}22`,color:sc,borderRadius:20,fontWeight:600}}>{sl}</span>
+                  </div>
+                  <div style={{fontSize:11,color:T.muted}}>👨‍⚕️ {a.provider}</div>
+                  {a.mode && <div style={{fontSize:11,color:T.muted,marginTop:3}}>📍 {a.mode}</div>}
+                  {a.code && <div style={{fontSize:10,color:T.muted,marginTop:3,fontFamily:'monospace'}}>{a.code}</div>}
+                  <div style={{display:'flex',gap:8,marginTop:12}}>
+                    <button style={{flex:1,padding:'8px',background:T.glass,border:`1px solid ${T.border}`,borderRadius:9,color:T.text,fontSize:11,cursor:'pointer',backdropFilter:'blur(6px)'}}>Modifier</button>
+                    <button style={{flex:1,padding:'8px',background:'transparent',border:`1px solid ${T.urgent}44`,borderRadius:9,color:T.urgent,fontSize:11,cursor:'pointer'}}>Annuler</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      <NavBar active="rdv" T={T} onMic={onBook} onNav={onNav} inChat={false}/>
+    </div>
+  );
+}
+
+// ── ÉCRAN SERVICES ────────────────────────────────────────────
+const SERVICES_LIST = [
+  { icon:'👨‍⚕️', title:'Médecine familiale',     sub:'Dr. Awada, Caricevic, Fruchtermann…', color:'#00D7C8', msg:'Je voudrais voir un médecin de famille' },
+  { icon:'🦵', title:'Physiothérapie',          sub:'CNESST · SAAQ · Sport · Post-op',    color:'#00E5A0', msg:"J'ai besoin de physiothérapie" },
+  { icon:'🧠', title:'Psychologie',             sub:'TCC · Anxiété · Dépression',          color:'#8B5CF6', msg:'Je voudrais consulter un psychologue' },
+  { icon:'🍎', title:'Nutrition',               sub:'Diabète · Poids · Cholestérol',       color:'#F9A826', msg:'Je veux voir une nutritionniste' },
+  { icon:'👶', title:'Pédiatrie',               sub:'Enfants · Vaccination · Urgence',     color:'#EC4899', msg:'Mon enfant a besoin de soins' },
+  { icon:'🩸', title:'Prises de sang',          sub:'Ordonnance requise · 15 min',         color:'#EF4444', msg:'Je veux faire une prise de sang' },
+  { icon:'🦺', title:'CNESST / Accident travail',sub:'Physio · Ergo · Dossier',            color:'#F9A826', msg:"J'ai eu un accident de travail, j'ai besoin de physiothérapie CNESST" },
+  { icon:'🚗', title:'SAAQ / Accident auto',    sub:'Physio · Réadaptation · Réclamation', color:'#00D7C8', msg:"J'ai eu un accident de voiture, j'ai besoin de physiothérapie SAAQ" },
+  { icon:'💊', title:'Renouvellement ordo',     sub:'24-48h · Votre médecin',              color:'#00E5A0', msg:'Je dois renouveler mon ordonnance' },
+  { icon:'🌡️', title:'Clinique sans RDV',       sub:'Urgences mineures · Même jour',       color:'#EC4899', msg:"J'ai besoin d'une consultation urgente aujourd'hui" },
+];
+
+function ScreenServices({ T, onBack, onBook, onNav, onSelectService }: any) {
+  return (
+    <div style={{height:'100vh',background:T.bg,display:'flex',flexDirection:'column',maxWidth:420,margin:'0 auto',color:T.text,fontFamily:"'Inter',sans-serif"}}>
+      <div style={{padding:'14px 18px',display:'flex',alignItems:'center',gap:12,borderBottom:`1px solid ${T.border}`,flexShrink:0}}>
+        <button onClick={onBack} style={{background:'none',border:'none',cursor:'pointer',color:T.muted,fontSize:18}}>←</button>
+        <div style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:16,color:T.text,flex:1}}>Nos services</div>
+      </div>
+      <div style={{flex:1,overflowY:'auto',padding:'12px 14px 80px',display:'flex',flexDirection:'column',gap:8}}>
+        {SERVICES_LIST.map((s,i)=>(
+          <button key={i} onClick={()=>onSelectService(s.msg)} style={{width:'100%',padding:'14px 16px',background:T.s1,border:`1px solid ${T.border}`,borderRadius:13,cursor:'pointer',textAlign:'left',display:'flex',alignItems:'center',gap:14,borderLeft:`3px solid ${s.color}`}}>
+            <div style={{width:40,height:40,borderRadius:11,background:`${s.color}18`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0}}>{s.icon}</div>
+            <div style={{flex:1}}>
+              <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:13,fontWeight:700,color:T.text}}>{s.title}</div>
+              <div style={{fontSize:11,color:T.muted,marginTop:2}}>{s.sub}</div>
+            </div>
+            <div style={{fontSize:16,color:T.muted}}>→</div>
+          </button>
+        ))}
+      </div>
+      <NavBar active="svc" T={T} onMic={onBook} onNav={onNav} inChat={false}/>
+    </div>
+  );
+}
+
+// ── ÉCRAN PROFIL ──────────────────────────────────────────────
+function ScreenProfil({ T, onBack, onNav, theme, setTheme }: any) {
+  const [profile, setProfile] = useState({ name:'', phone:'', email:'', lang:'fr' });
+  useEffect(() => {
+    try { const p = JSON.parse(localStorage.getItem('vitara_profile') || '{}'); if(p.name) setProfile(p); } catch {}
+  }, []);
+  const appointments = (() => { try { return JSON.parse(localStorage.getItem('vitara_appointments') || '[]'); } catch { return []; } })();
+
+  return (
+    <div style={{height:'100vh',background:T.bg,display:'flex',flexDirection:'column',maxWidth:420,margin:'0 auto',color:T.text,fontFamily:"'Inter',sans-serif"}}>
+      <div style={{padding:'14px 18px',display:'flex',alignItems:'center',gap:12,borderBottom:`1px solid ${T.border}`,flexShrink:0}}>
+        <button onClick={onBack} style={{background:'none',border:'none',cursor:'pointer',color:T.muted,fontSize:18}}>←</button>
+        <div style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:16,color:T.text,flex:1}}>Mon profil</div>
+        <button onClick={()=>setTheme((t:string)=>t==='dark'?'light':'dark')} style={{padding:'5px 10px',background:T.glass,border:`1px solid ${T.border}`,borderRadius:18,fontSize:11,color:T.text,cursor:'pointer',backdropFilter:'blur(8px)'}}>
+          {theme==='dark'?'☀️ Clair':'🌙 Sombre'}
+        </button>
+      </div>
+      <div style={{flex:1,overflowY:'auto',padding:'16px 16px 80px'}}>
+
+        {/* Avatar */}
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'20px 0 24px'}}>
+          <div style={{width:72,height:72,borderRadius:'50%',background:`linear-gradient(135deg,${T.teal},${T.purple})`,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Space Grotesk',sans-serif",fontSize:26,fontWeight:700,color:'white',marginBottom:12}}>
+            {profile.name ? profile.name.charAt(0).toUpperCase() : '👤'}
+          </div>
+          <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:17,fontWeight:700,color:T.text}}>{profile.name || 'Invité'}</div>
+          <div style={{fontSize:11,color:T.muted,marginTop:3}}>Patient VITARA</div>
+        </div>
+
+        {/* Stats */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:16}}>
+          {[
+            { label:'RDV pris', value: appointments.length, icon:'📅', color:T.teal },
+            { label:'Via VITARA AI', value: appointments.length, icon:'🤖', color:T.purple },
+          ].map(s=>(
+            <div key={s.label} style={{padding:'14px',background:T.s1,border:`1px solid ${T.border}`,borderRadius:12,textAlign:'center'}}>
+              <div style={{fontSize:24,marginBottom:4}}>{s.icon}</div>
+              <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:22,fontWeight:700,color:s.color}}>{s.value}</div>
+              <div style={{fontSize:10,color:T.muted}}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Infos */}
+        <div style={{background:T.s1,border:`1px solid ${T.border}`,borderRadius:13,overflow:'hidden',marginBottom:12}}>
+          {[
+            { icon:'📱', label:'Téléphone',   value: profile.phone || 'Non renseigné' },
+            { icon:'📧', label:'Courriel',    value: profile.email || 'Non renseigné' },
+            { icon:'🌐', label:'Langue',      value: profile.lang === 'fr' ? 'Français' : profile.lang === 'en' ? 'English' : 'العربية' },
+          ].map((f,i,arr)=>(
+            <div key={f.label} style={{display:'flex',alignItems:'center',gap:12,padding:'13px 16px',borderBottom:i<arr.length-1?`1px solid ${T.border}`:'none'}}>
+              <span style={{fontSize:16}}>{f.icon}</span>
+              <div style={{flex:1}}>
+                <div style={{fontSize:10,color:T.muted}}>{f.label}</div>
+                <div style={{fontSize:13,color:T.text,fontWeight:500}}>{f.value}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Liens */}
+        <a href="/patient-portal" style={{display:'flex',alignItems:'center',gap:12,padding:'14px 16px',background:T.s1,border:`1px solid ${T.border}`,borderRadius:13,textDecoration:'none',marginBottom:10,cursor:'pointer'}}>
+          <span style={{fontSize:18}}>🏥</span>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13,fontWeight:600,color:T.text}}>Portail patient complet</div>
+            <div style={{fontSize:11,color:T.muted}}>Dossier · Assurances · Documents</div>
+          </div>
+          <span style={{color:T.teal,fontSize:16}}>→</span>
+        </a>
+
+        <button onClick={()=>{ localStorage.removeItem('vitara_appointments'); localStorage.removeItem('vitara_profile'); window.location.reload(); }}
+          style={{width:'100%',padding:'12px',background:'transparent',border:`1px solid ${T.urgent}44`,borderRadius:11,color:T.urgent,fontSize:12,cursor:'pointer'}}>
+          Effacer mes données locales
+        </button>
+      </div>
+      <NavBar active="prof" T={T} onMic={()=>{}} onNav={onNav} inChat={false}/>
+    </div>
+  );
+}
+
+
 function NavBar({ active, T, onMic, onNav, inChat }:any) {
   const items = [
     {id:'home',icon:'🏠',label:'Accueil'},
