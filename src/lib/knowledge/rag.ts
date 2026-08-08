@@ -157,8 +157,33 @@ RÈGLES CRITIQUES v4.0 — LIRE AVANT CHAQUE RÉPONSE
 MÉDECINS GMF: ${gmf}
 PHYSIO (CNESST/SAAQ): ${physio}
 
-CRÉNEAUX: slots=[{"id":"1","label":"Lundi 11 août à 9h","provider":"Dr. Odette Préfontaine","dept":"Médecine familiale","duration":"20 min"},{"id":"2","label":"Mardi 12 août à 14h30","provider":"Dr. Odette Préfontaine","dept":"Médecine familiale","duration":"20 min"},{"id":"3","label":"Jeudi 14 août à 11h","provider":"Dr. Odette Préfontaine","dept":"Médecine familiale","duration":"20 min"}]
-BOOKING: booking={"date":"...","time":"...","provider":"...","dept":"...","service":"...","payer":"RAMQ","code":"VIT-XXXX","sms":"+1(514)555-0100","email":"patient@vitara.ca","mode":"En clinique","room":"Salle 3","duration":"20 min"}`;
+⑨ CRÉNEAUX (OBLIGATOIRE — présenter 3 créneaux quand praticien + service confirmés):
+  Horaires: Lun-Jeu 8h-18h, Ven 8h-16h, Sam/Dim FERMÉ
+  Durées: médecine=20min, physio=30min, pédiatrie=30min, CNESST/SAAQ=30min
+  FORMAT OBLIGATOIRE:
+  slots=[
+    {"id":"1","label":"Lundi 11 août à 10h00","provider":"Dr. Odette Préfontaine","dept":"Médecine familiale","duration":"20 min","date":"2026-08-11","time":"10:00"},
+    {"id":"2","label":"Mardi 12 août à 14h30","provider":"Dr. Odette Préfontaine","dept":"Médecine familiale","duration":"20 min","date":"2026-08-12","time":"14:30"},
+    {"id":"3","label":"Jeudi 14 août à 11h00","provider":"Dr. Odette Préfontaine","dept":"Médecine familiale","duration":"20 min","date":"2026-08-14","time":"11:00"}
+  ]
+  → Dire: "Voici 3 créneaux disponibles pour {provider}. Lequel vous convient ?"
+  → Attendre le choix du patient AVANT de générer le booking
+
+⑩ CONFIRMATION FINALE (OBLIGATOIRE — inclure toutes les données):
+  Code format: RDV-{AAAAMMJJ}-{4chiffres} ex: RDV-20260811-7429
+  FORMAT OBLIGATOIRE du booking:
+  booking={
+    "date":"Lundi 11 août 2026","time":"10h00","provider":"Dr. Odette Préfontaine",
+    "dept":"Médecine familiale","service":"Médecine de famille",
+    "patient_name":"{full_name}","patient_phone":"{phone}","patient_email":"{email}",
+    "patient_dob":"{date_of_birth}","ramq":"****{4 derniers chiffres}",
+    "reason":"{reason}","body_part":"{body_part}",
+    "accident_type":"{accident_type ou null}","claim_number":"{cnesst/saaq ou null}",
+    "payer":"CNESST ou RAMQ ou SAAQ","code":"RDV-20260811-7429",
+    "sms":"+1(514)555-0100","email_clinic":"rdv@vitara.ca",
+    "mode":"En clinique","room":"Salle 3","duration":"20 min"
+  }
+  → Après le booking, dire la phrase de confirmation complète`;
 
   const en = `You are ${name}, VITARA medical assistant — Clinique Médicale JOLIBOURG de Laval. Date: ${date}.
 RULE: Pure JSON ONLY.

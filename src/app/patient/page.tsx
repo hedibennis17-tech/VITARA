@@ -911,35 +911,106 @@ export default function PatientPage() {
   }
 
   if (screen === 'done' && booking) return (
-    <div style={{minHeight:'100vh',background:T.bg,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24,color:T.text,fontFamily:"'Inter',sans-serif",maxWidth:420,margin:'0 auto'}}>
-      <div style={{width:70,height:70,borderRadius:'50%',background:`linear-gradient(135deg,${T.mint}22,${T.teal}14)`,border:`3px solid ${T.mint}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,marginBottom:16}}>✓</div>
-      <h2 style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:19,fontWeight:700,marginBottom:4,textAlign:'center'}}>Rendez-vous confirmé !</h2>
-      <p style={{color:T.muted,fontSize:12,marginBottom:20}}>📱 SMS · 📧 Email envoyés</p>
+    <div style={{minHeight:'100vh',background:T.bg,display:'flex',flexDirection:'column',color:T.text,fontFamily:'Inter,sans-serif',maxWidth:420,margin:'0 auto',overflowY:'auto'}}>
 
-      <div style={{width:'100%',background:T.glass,border:`1.5px solid ${agent.color}30`,borderRadius:18,padding:18,marginBottom:12,backdropFilter:'blur(12px)'}}>
-        <div style={{marginBottom:12}}>
-          <div style={{fontSize:16,fontWeight:700,fontFamily:"'Space Grotesk',sans-serif"}}>{booking.date}</div>
-          <div style={{fontSize:13,color:agent.color,fontWeight:600}}>{booking.time}{booking.duration?' · '+booking.duration:''}</div>
-        </div>
-        {[['👨‍⚕️','Professionnel',booking.provider],['🏥','Département',booking.dept],['💳','Payeur',booking.payer||'RAMQ'],['🩺','Service',booking.service],['📱','SMS',booking.sms],['📧','Email',booking.email],['🔑','Code',booking.code]]
-          .filter(([,,v])=>v)
-          .map(([ic,lb,vl])=>(
-          <div key={String(lb)} style={{display:'flex',alignItems:'center',gap:9,padding:'6px 0',borderBottom:`1px solid ${T.border}`}}>
-            <span style={{fontSize:14}}>{ic}</span>
-            <span style={{fontSize:11,color:T.muted,flex:1}}>{lb}</span>
-            <span style={{fontSize:11,fontWeight:600}}>{vl}</span>
+      {/* Header succès */}
+      <div style={{background:'linear-gradient(135deg,rgba(0,215,200,.12),rgba(139,92,246,.12))',borderBottom:`1px solid ${T.border}`,padding:'24px 20px 16px',textAlign:'center'}}>
+        <div style={{width:64,height:64,borderRadius:'50%',background:'linear-gradient(135deg,#00E5A0,#00D7C8)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,margin:'0 auto 12px',boxShadow:'0 0 24px rgba(0,215,200,.4)'}}>✓</div>
+        <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:20,fontWeight:800,color:T.text}}>Rendez-vous confirmé !</div>
+        <div style={{fontSize:12,color:T.muted,marginTop:4}}>📱 SMS · 📧 Email envoyés à la clinique</div>
+        {booking.code && (
+          <div style={{marginTop:10,padding:'6px 16px',background:'rgba(0,215,200,.15)',border:'1px solid rgba(0,215,200,.35)',borderRadius:20,display:'inline-block'}}>
+            <span style={{fontSize:11,color:T.muted}}>N° confirmation : </span>
+            <span style={{fontSize:13,color:T.teal,fontWeight:800,fontFamily:'monospace'}}>{booking.code}</span>
           </div>
-        ))}
+        )}
       </div>
 
-      {/* Lien portail patient */}
-      <a href="/patient-portal" style={{display:'block',width:'100%',marginBottom:12,padding:'13px',background:`linear-gradient(135deg,${T.teal}22,${T.purple}22)`,border:`1px solid ${T.teal}44`,borderRadius:12,textDecoration:'none',textAlign:'center',color:T.teal,fontSize:13,fontWeight:700}}>
-        📋 Voir dans mon portail patient →
-      </a>
+      <div style={{padding:'14px 16px 100px',display:'flex',flexDirection:'column',gap:10}}>
 
-      <div style={{display:'flex',gap:8,width:'100%'}}>
-        <button onClick={()=>{ setScreen('chat'); setBooking(null); }} style={{flex:1,padding:'11px',background:T.glass,border:`1px solid ${T.teal}`,borderRadius:11,color:T.teal,fontSize:13,fontWeight:600,cursor:'pointer',backdropFilter:'blur(6px)'}}>Autre demande</button>
-        <button onClick={resetAll} style={{flex:1,padding:'11px',background:`linear-gradient(135deg,${T.teal},${T.purple})`,border:'none',borderRadius:11,color:'white',fontSize:13,fontWeight:700,cursor:'pointer'}}>Terminer</button>
+        {/* RDV */}
+        <div style={{background:T.s1,border:`2px solid ${agent.color}44`,borderRadius:14,overflow:'hidden'}}>
+          <div style={{background:`${agent.color}18`,padding:'10px 14px',borderBottom:`1px solid ${agent.color}33`}}>
+            <span style={{fontSize:11,fontWeight:700,color:agent.color,textTransform:'uppercase' as const,letterSpacing:'.08em'}}>📅 Rendez-vous</span>
+          </div>
+          <div style={{padding:'12px 14px',display:'flex',flexDirection:'column',gap:8}}>
+            {([
+              ['Date',          booking.date],
+              ['Heure',         (booking.time||'') + (booking.duration?' · '+booking.duration:'')],
+              ['Professionnel', booking.provider],
+              ['Service',       booking.service || booking.dept],
+              ['Mode',          booking.mode ? (booking.mode + (booking.room?' · '+booking.room:'')) : null],
+              ['Payeur',        booking.payer],
+            ] as [string,string|null][]).filter(([,v])=>v).map(([k,v])=>(
+              <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'4px 0',borderBottom:`1px solid ${T.border}44`}}>
+                <span style={{fontSize:11,color:T.muted}}>{k}</span>
+                <span style={{fontSize:12,fontWeight:600,color:T.text,textAlign:'right',maxWidth:'60%'}}>{v}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Motif */}
+        {(booking.reason || booking.body_part || booking.accident_type) && (
+          <div style={{background:T.s1,border:`1px solid ${T.border}`,borderRadius:14,overflow:'hidden'}}>
+            <div style={{background:'rgba(249,168,38,.1)',padding:'10px 14px',borderBottom:`1px solid ${T.border}`}}>
+              <span style={{fontSize:11,fontWeight:700,color:'#F9A826',textTransform:'uppercase' as const,letterSpacing:'.08em'}}>🩺 Motif</span>
+            </div>
+            <div style={{padding:'12px 14px',display:'flex',flexDirection:'column',gap:7}}>
+              {([
+                ['Raison',    booking.reason],
+                ['Zone',      booking.body_part],
+                ['Type',      booking.accident_type && booking.accident_type !== 'null' ? booking.accident_type : null],
+                ['N° dossier',booking.claim_number && booking.claim_number !== 'null' ? booking.claim_number : null],
+              ] as [string,string|null][]).filter(([,v])=>v).map(([k,v])=>(
+                <div key={k} style={{display:'flex',justifyContent:'space-between'}}>
+                  <span style={{fontSize:11,color:T.muted}}>{k}</span>
+                  <span style={{fontSize:12,color:T.text,textAlign:'right',maxWidth:'65%'}}>{v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Infos patient */}
+        {(booking.patient_name || convState.current?.full_name?.value) && (
+          <div style={{background:T.s1,border:`1px solid ${T.border}`,borderRadius:14,overflow:'hidden'}}>
+            <div style={{background:'rgba(139,92,246,.1)',padding:'10px 14px',borderBottom:`1px solid ${T.border}`}}>
+              <span style={{fontSize:11,fontWeight:700,color:T.purple,textTransform:'uppercase' as const,letterSpacing:'.08em'}}>👤 Patient</span>
+            </div>
+            <div style={{padding:'12px 14px',display:'flex',flexDirection:'column',gap:7}}>
+              {([
+                ['Nom',      booking.patient_name  || convState.current?.full_name?.value],
+                ['Tél.',     booking.patient_phone  || convState.current?.phone?.value],
+                ['Courriel', booking.patient_email  || convState.current?.email?.value],
+                ['RAMQ',     booking.ramq           || (convState.current?.ramq_number?.value ? '****'+String(convState.current.ramq_number.value).slice(-4) : null)],
+              ] as [string,string|null][]).filter(([,v])=>v).map(([k,v])=>(
+                <div key={k} style={{display:'flex',justifyContent:'space-between'}}>
+                  <span style={{fontSize:11,color:T.muted}}>{k}</span>
+                  <span style={{fontSize:12,color:T.text}}>{v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Contact clinique */}
+        <div style={{background:T.s1,border:`1px solid ${T.border}`,borderRadius:14,padding:'12px 14px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div>
+            <div style={{fontSize:11,fontWeight:600,color:T.text}}>Clinique Médicale JOLIBOURG</div>
+            <div style={{fontSize:10,color:T.muted,marginTop:2}}>{booking.sms || '(514) 555-0100'}</div>
+          </div>
+          <a href="tel:5145550100" style={{padding:'7px 14px',background:'rgba(0,215,200,.15)',border:'1px solid rgba(0,215,200,.35)',borderRadius:9,color:T.teal,fontSize:11,fontWeight:700,textDecoration:'none'}}>📞 Appeler</a>
+        </div>
+
+        <a href="/patient-portal" style={{display:'block',padding:'13px',background:'linear-gradient(135deg,rgba(0,215,200,.15),rgba(139,92,246,.15))',border:'1px solid rgba(0,215,200,.35)',borderRadius:12,textDecoration:'none',textAlign:'center',color:T.teal,fontSize:13,fontWeight:700}}>
+          📋 Voir dans mon portail patient →
+        </a>
+
+        <div style={{display:'flex',gap:8}}>
+          <button onClick={()=>{ setScreen('chat'); setBooking(null); }} style={{flex:1,padding:'12px',background:T.glass,border:`1px solid ${T.teal}`,borderRadius:11,color:T.teal,fontSize:13,fontWeight:600,cursor:'pointer',backdropFilter:'blur(6px)'}}>Autre demande</button>
+          <button onClick={resetAll} style={{flex:1,padding:'12px',background:'linear-gradient(135deg,#00D7C8,#8B5CF6)',border:'none',borderRadius:11,color:'white',fontSize:13,fontWeight:700,cursor:'pointer'}}>Terminer</button>
+        </div>
       </div>
     </div>
   );
