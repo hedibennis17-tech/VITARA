@@ -26,11 +26,13 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json() as {
-      messages: { role: string; content: string }[];
+      messages:  { role: string; content: string }[];
       language?: string;
       max_tokens?: number;
+      agent?:    string;   // 'houda' | 'said' | 'hayet' | 'alain'
+      gender?:   'female' | 'male';
     };
-    const { messages, language = 'fr', max_tokens = 500 } = body;
+    const { messages, language = 'fr', max_tokens = 500, agent = 'houda', gender = 'female' } = body;
 
     // ── Historique propre: max 10 messages, commence par user ─
     const trimmed     = messages.slice(-10);
@@ -40,7 +42,7 @@ export async function POST(req: NextRequest) {
     const lastUser     = [...safeMessages].reverse().find(m => m.role === 'user')?.content || '';
     const ragResult    = retrieveContext(lastUser, safeMessages);
     const detectedLang = ragResult.detectedLang || language;
-    const systemPrompt = buildSystemPrompt(detectedLang, ragResult.context);
+    const systemPrompt = buildSystemPrompt(detectedLang, ragResult.context, agent, gender);
 
     // ── Appel Groq avec retry automatique sur TPM ─────────────
     async function callGroq(model: string) {

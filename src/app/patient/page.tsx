@@ -365,7 +365,13 @@ export default function PatientPage() {
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: safeHist, language: currentLang, max_tokens: 600 }),
+        body: JSON.stringify({
+          messages:   safeHist,
+          language:   currentLang,
+          max_tokens: 600,
+          agent:      agentRef.current.id,   // 'houda' | 'said' | 'hayet' | 'alain'
+          gender:     agentRef.current.id === 'said' || agentRef.current.id === 'alain' ? 'male' : 'female',
+        }),
       });
 
       const data = await res.json() as any;
