@@ -315,8 +315,15 @@ export default function PatientPage() {
         audio.onplay   = () => setVState('speaking');
         audio.onended  = () => { setVState('idle'); URL.revokeObjectURL(url); audioRef.current = null; };
         audio.onerror  = () => { setVState('idle'); URL.revokeObjectURL(url); audioRef.current = null; };
-        await audio.play();
-        return; // ← ElevenLabs OK, on s'arrête ici
+        try {
+          await audio.play();
+          return; // ← ElevenLabs OK, on s'arrête ici
+        } catch (playErr) {
+          // Autoplay bloqué par le navigateur (mobile) → fallback Web Speech
+          console.warn('[TTS] Autoplay bloqué:', playErr);
+          URL.revokeObjectURL(url);
+          audioRef.current = null;
+        }
       }
       // 501 = clé manquante → fallback Web Speech sans log d'erreur
       if (res.status !== 501) console.warn('[TTS] ElevenLabs error', res.status);
@@ -394,9 +401,23 @@ export default function PatientPage() {
       setMsgs(p => [...p, { role: 'ai', text: aiTxt }]);
 
       if (parsed.slots) setSlots(parsed.slots);
-      if (parsed.booking) { setBooking(parsed.booking); setTimeout(() => setScreen('done'), 900); }
+
+      // Valider que le booking est complet avant de naviguer vers 'done'
+      // Groq peut retourner un booking partiel → crash si on navigue trop tôt
+      const b = parsed.booking;
+      if (b && b.date && b.time && b.provider && b.code) {
+        setBooking(b);
+        setTimeout(() => setScreen('done'), 900);
+      }
+
       setVState(parsed.intent === 'emergency' ? 'idle' : 'speaking');
-      speak(aiTxt);
+
+      // speak() est async — on ne l'attend pas pour ne pas bloquer l'UI
+      // mais on attrape toute erreur non-catchée
+      speak(aiTxt).catch((e: any) => {
+        console.warn('[speak]', e);
+        setVState('idle');
+      });
 
     } catch (e: any) {
       setMsgs(p => [...p, { role: 'ai', text: '⚠️ ' + (e.message || 'Erreur réseau — réessayez') }]);
