@@ -682,93 +682,129 @@ export default function PatientPage() {
 
   // ── AGENTS ────────────────────────────────────────────────
   if (screen === 'agents') return (
-    <div style={{minHeight:'100vh',background:T.bg,color:T.text,fontFamily:"'Inter',sans-serif",display:'flex',flexDirection:'column',maxWidth:420,margin:'0 auto',overflow:'hidden'}}>
-      <div style={{padding:'14px 18px',display:'flex',alignItems:'center',gap:10}}>
-        <button onClick={()=>setScreen('home')} style={{background:'none',border:'none',cursor:'pointer',color:T.muted,fontSize:20}}>←</button>
+    <div style={{height:'100vh',background:T.bg,color:T.text,fontFamily:"'Inter',sans-serif",display:'flex',flexDirection:'column',maxWidth:420,margin:'0 auto',overflow:'hidden'}}>
+
+      {/* Header */}
+      <div style={{padding:'14px 18px 10px',display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
+        <button onClick={()=>setScreen('home')} style={{background:'none',border:'none',cursor:'pointer',color:T.muted,fontSize:20,padding:4}}>←</button>
         <div style={{flex:1,textAlign:'center',fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:15}}>Choisir votre agent</div>
-        <button onClick={()=>setTheme(t=>t==='dark'?'light':'dark')} style={{width:32,height:32,background:T.glass,border:`1px solid ${T.border}`,borderRadius:8,cursor:'pointer',fontSize:14,backdropFilter:'blur(6px)'}}>
+        <button onClick={()=>setTheme(t=>t==='dark'?'light':'dark')} style={{width:32,height:32,background:T.glass,border:`1px solid ${T.border}`,borderRadius:9,cursor:'pointer',fontSize:14,backdropFilter:'blur(6px)'}}>
           {theme==='dark'?'☀️':'🌙'}
         </button>
       </div>
 
-      {/* Tabs */}
-      <div style={{display:'flex',gap:8,padding:'0 18px',overflowX:'auto',scrollbarWidth:'none',flexShrink:0}}>
-        {AGENTS.map((a,i)=>(
-          <button key={a.id} onClick={()=>setAIdx(i)} style={{flex:'0 0 90px',padding:'10px 8px',background:aIdx===i?`${a.color}18`:T.glass,border:`1.5px solid ${aIdx===i?a.color:T.border}`,borderRadius:14,cursor:'pointer',textAlign:'center',backdropFilter:'blur(8px)',transition:'all .3s'}}>
-            <div style={{fontSize:24,marginBottom:4}}>{a.badge}</div>
-            <div style={{fontSize:12,fontWeight:700,color:aIdx===i?a.color:T.text,fontFamily:"'Space Grotesk',sans-serif"}}>{a.name}</div>
-            <div style={{fontSize:9,color:T.muted,marginTop:1}}>{a.lang}</div>
-            {aIdx===i&&<div style={{width:20,height:3,background:a.color,borderRadius:2,margin:'5px auto 0'}}/>}
-          </button>
-        ))}
+      {/* ── Sélecteur horizontal — photos rondes ── */}
+      <div style={{display:'flex',justifyContent:'center',gap:16,padding:'4px 18px 16px',flexShrink:0}}>
+        {AGENTS.map((a,i)=>{
+          const ext=a.id==='hayet'?'jpg':'png';
+          const active=aIdx===i;
+          return (
+            <button key={a.id} onClick={()=>setAIdx(i)}
+              style={{display:'flex',flexDirection:'column',alignItems:'center',gap:5,background:'none',border:'none',cursor:'pointer',padding:'2px',flexShrink:0}}>
+              <div style={{width:70,height:70,borderRadius:'50%',padding:active?3:2,
+                background:active?`conic-gradient(${a.color},${a.color}66,${a.color})`:`${T.border}`,
+                boxShadow:active?`0 0 18px ${a.color}55`:'none',transition:'all .35s'}}>
+                <div style={{width:'100%',height:'100%',borderRadius:'50%',overflow:'hidden',background:T.s2}}>
+                  <img src={`/agents/${a.id}.${ext}`} alt={a.name} style={{width:'100%',height:'100%',objectFit:'cover',
+                    objectPosition:a.id==='houda'?'center 22%':a.id==='said'?'center 15%':a.id==='alain'?'center 18%':'center 20%'}}/>
+                </div>
+              </div>
+              <div style={{fontSize:11,fontWeight:active?700:500,color:active?a.color:T.muted,fontFamily:"'Space Grotesk',sans-serif",transition:'color .3s'}}>{a.name}</div>
+              <div style={{width:active?18:4,height:4,borderRadius:2,background:active?a.color:'transparent',transition:'all .35s'}}/>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Detail */}
-      <div style={{flex:1,padding:'14px 18px 80px',overflow:'auto'}}>
+      {/* ── Carte détail ── */}
+      <div style={{flex:1,overflowY:'auto',padding:'0 14px 80px'}}>
         <div key={curAgent.id} style={{animation:'slideIn .3s ease'}}>
-          <div style={{background:T.glass,border:`1px solid ${curAgent.color}35`,borderRadius:22,backdropFilter:'blur(14px)',overflow:'hidden',marginBottom:12,position:'relative'}}>
-            <div style={{position:'absolute',inset:0,background:`radial-gradient(circle at 50% 20%,${curAgent.color}10,transparent 70%)`}}/>
-            <div style={{display:'flex',justifyContent:'center',padding:'14px 0 0',position:'relative'}}>
-              <Avatar id={curAgent.id} size={155} talking={false} color={curAgent.color}/>
-            </div>
-            <div style={{padding:'6px 16px 16px',textAlign:'center',position:'relative'}}>
-              <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:7,marginBottom:3}}>
-                <span style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:18,fontWeight:700,color:T.text}}>{curAgent.name}</span>
-                <span style={{fontSize:9,padding:'2px 8px',background:`${curAgent.color}20`,color:curAgent.color,borderRadius:20,fontWeight:600}}>● En ligne</span>
+
+          {/* Photo + infos */}
+          <div style={{background:T.glass,border:`1px solid ${curAgent.color}44`,borderRadius:22,overflow:'hidden',marginBottom:12,position:'relative',backdropFilter:'blur(16px)'}}>
+            <div style={{position:'absolute',inset:0,background:`radial-gradient(ellipse at 50% 0%,${curAgent.color}18,transparent 60%)`}}/>
+
+            {/* Grande photo ronde centrée */}
+            <div style={{display:'flex',justifyContent:'center',padding:'22px 0 16px',position:'relative',zIndex:1}}>
+              <div style={{width:150,height:150,borderRadius:'50%',padding:3,
+                background:`conic-gradient(${curAgent.color},${curAgent.color}55,${curAgent.color})`,
+                boxShadow:`0 0 30px ${curAgent.color}50`}}>
+                <div style={{width:'100%',height:'100%',borderRadius:'50%',overflow:'hidden',background:T.bg}}>
+                  <img src={`/agents/${curAgent.id}.${curAgent.id==='hayet'?'jpg':'png'}`} alt={curAgent.name}
+                    style={{width:'100%',height:'100%',objectFit:'cover',
+                      objectPosition:curAgent.id==='houda'?'center 22%':curAgent.id==='said'?'center 15%':curAgent.id==='alain'?'center 18%':'center 20%'}}/>
+                </div>
               </div>
-              <div style={{fontSize:11,color:T.muted,marginBottom:10}}>
-                {curAgent.role}
-                <span style={{marginLeft:8,fontSize:10,padding:'1px 7px',background:VOICE_CONFIG[curAgent.id]?.gender==='female'?`${T.pink}22`:`${T.teal}22`,color:VOICE_CONFIG[curAgent.id]?.gender==='female'?T.pink:T.teal,borderRadius:20,fontWeight:600}}>
-                  {VOICE_CONFIG[curAgent.id]?.label || '🎙️ Voix IA'}
+            </div>
+
+            {/* Nom + statut */}
+            <div style={{textAlign:'center',padding:'0 20px 18px',position:'relative',zIndex:1}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginBottom:3}}>
+                <span style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:22,fontWeight:800,color:T.text}}>{curAgent.name}</span>
+                <span style={{fontSize:9,padding:'3px 9px',background:`${curAgent.color}22`,color:curAgent.color,borderRadius:20,fontWeight:700,border:`1px solid ${curAgent.color}44`}}>● En ligne</span>
+              </div>
+              <div style={{fontSize:12,color:T.muted,marginBottom:12}}>{curAgent.role}</div>
+
+              {/* Langues disponibles — flags + labels */}
+              <div style={{display:'flex',justifyContent:'center',gap:7,flexWrap:'wrap',marginBottom:10}}>
+                {[{l:'fr',f:'🇫🇷',n:'Français'},{l:'en',f:'🇬🇧',n:'English'},{l:'ar',f:'🇸🇦',n:'العربية'}]
+                  .filter(({l})=>curAgent.langs.includes(l))
+                  .map(({l,f,n})=>(
+                  <div key={l} style={{display:'flex',alignItems:'center',gap:5,padding:'5px 12px',background:`${curAgent.color}15`,border:`1px solid ${curAgent.color}33`,borderRadius:20}}>
+                    <span style={{fontSize:15}}>{f}</span>
+                    <span style={{fontSize:11,color:curAgent.color,fontWeight:600}}>{n}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Badge voix */}
+              <div style={{display:'inline-flex',alignItems:'center',gap:6,padding:'5px 14px',
+                background:VOICE_CONFIG[curAgent.id]?.gender==='female'?`${T.pink}18`:`${T.teal}18`,
+                border:`1px solid ${VOICE_CONFIG[curAgent.id]?.gender==='female'?T.pink:T.teal}44`,borderRadius:20}}>
+                <span style={{fontSize:13}}>🎙️</span>
+                <span style={{fontSize:11,fontWeight:600,color:VOICE_CONFIG[curAgent.id]?.gender==='female'?T.pink:T.teal}}>
+                  {VOICE_CONFIG[curAgent.id]?.label || 'Voix IA'}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Langue */}
-          <div style={{background:T.glass,border:`1px solid ${T.border}`,borderRadius:14,padding:'12px 14px',marginBottom:10,backdropFilter:'blur(8px)'}}>
-            <div style={{fontSize:10,color:T.muted,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:8}}>Langue de préférence</div>
-            <div style={{display:'flex',gap:6}}>
+          {/* Sélection langue */}
+          <div style={{background:T.glass,border:`1px solid ${T.border}`,borderRadius:14,padding:'14px',marginBottom:10,backdropFilter:'blur(8px)'}}>
+            <div style={{fontSize:10,color:T.muted,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:10,textAlign:'center'}}>Langue de conversation</div>
+            <div style={{display:'flex',gap:8}}>
               {[{l:'fr',f:'🇫🇷',n:'Français'},{l:'en',f:'🇬🇧',n:'English'},{l:'ar',f:'🇸🇦',n:'العربية'}].map(({l,f,n})=>(
                 curAgent.langs.includes(l) && (
-                  <button key={l} onClick={()=>setLang(l)} style={{flex:1,padding:'8px 4px',background:lang===l?`${curAgent.color}20`:T.s2,border:`1.5px solid ${lang===l?curAgent.color:T.border}`,borderRadius:10,cursor:'pointer',textAlign:'center'}}>
-                    <div style={{fontSize:18}}>{f}</div>
-                    <div style={{fontSize:9,color:lang===l?curAgent.color:T.muted,marginTop:2,fontWeight:600}}>{n}</div>
+                  <button key={l} onClick={()=>setLang(l)}
+                    style={{flex:1,padding:'10px 6px',background:lang===l?`${curAgent.color}22`:T.s2,
+                      border:`2px solid ${lang===l?curAgent.color:T.border}`,borderRadius:11,cursor:'pointer',textAlign:'center',transition:'all .2s'}}>
+                    <div style={{fontSize:22,marginBottom:4}}>{f}</div>
+                    <div style={{fontSize:10,color:lang===l?curAgent.color:T.muted,fontWeight:lang===l?700:400}}>{n}</div>
                   </button>
                 )
               ))}
             </div>
           </div>
 
-          {/* Bouton preview voix */}
-          <button onClick={()=>{
-            const cfg = VOICE_CONFIG[curAgent.id];
-            const previewText = cfg.preview[lang] || cfg.preview.fr;
-            if (synthRef.current) {
-              synthRef.current.cancel();
-              const u = new SpeechSynthesisUtterance(previewText);
-              u.lang   = lang === 'ar' ? 'ar-SA' : lang === 'en' ? 'en-US' : 'fr-FR';
-              u.pitch  = cfg.pitch;
-              u.rate   = cfg.rate;
-              u.volume = cfg.volume;
-              const v = voiceMap.current[curAgent.id];
-              if (v) u.voice = v;
-              synthRef.current.speak(u);
-            }
-          }} style={{width:'100%',marginBottom:8,padding:'11px',background:T.glass,border:`1.5px solid ${curAgent.color}55`,borderRadius:13,color:curAgent.color,fontSize:13,fontWeight:600,cursor:'pointer',backdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
-            🔊 Écouter la voix de {curAgent.name}
-            <span style={{fontSize:10,color:T.muted}}>({VOICE_CONFIG[curAgent.id]?.label})</span>
+          {/* Écouter voix */}
+          <button onClick={()=>{ const cfg=VOICE_CONFIG[curAgent.id]; speak(cfg?.preview?.[lang]||cfg?.preview?.fr||`Bonjour, je suis ${curAgent.name}.`); }}
+            style={{width:'100%',marginBottom:10,padding:'12px',background:T.glass,border:`1.5px solid ${curAgent.color}66`,borderRadius:13,color:curAgent.color,fontSize:13,fontWeight:600,cursor:'pointer',backdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+            🔊 Écouter la voix — 5 secondes
           </button>
 
-          <button onClick={()=>{ greeted.current=false; startSession(curAgent,lang); }} style={{width:'100%',padding:'14px',background:`linear-gradient(135deg,${curAgent.color},${curAgent.color}CC)`,border:'none',borderRadius:15,color:'white',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:"'Space Grotesk',sans-serif",boxShadow:`0 6px 20px ${curAgent.color}40`}}>
+          {/* CTA */}
+          <button onClick={()=>{ greeted.current=false; startSession(curAgent,lang); }}
+            style={{width:'100%',padding:'16px',background:`linear-gradient(135deg,${curAgent.color},${curAgent.color}BB)`,border:'none',borderRadius:15,color:'white',fontSize:15,fontWeight:800,cursor:'pointer',fontFamily:"'Space Grotesk',sans-serif",boxShadow:`0 8px 28px ${curAgent.color}50`,display:'flex',alignItems:'center',justifyContent:'center',gap:10}}>
             🎤 Parler avec {curAgent.name}
           </button>
-        </div>
-        {/* Dots */}
-        <div style={{display:'flex',justifyContent:'center',gap:6,marginTop:14}}>
-          {AGENTS.map((_,i)=><div key={i} style={{width:i===aIdx?18:6,height:6,borderRadius:3,background:i===aIdx?AGENTS[aIdx].color:T.border,transition:'all .3s'}}/>)}
+
+          {/* Dots */}
+          <div style={{display:'flex',justifyContent:'center',gap:6,marginTop:16}}>
+            {AGENTS.map((_,i)=><div key={i} style={{width:i===aIdx?22:6,height:5,borderRadius:3,background:i===aIdx?AGENTS[aIdx].color:T.border,transition:'all .3s'}}/>)}
+          </div>
         </div>
       </div>
+
       <NavBar active="agents" T={T}
         onMic={()=>{ greeted.current=false; startSession(curAgent,lang); }}
         onNav={(v:string)=>{ if(v==='home') setScreen('home'); if(v==='rdv') setScreen('rdv'); if(v==='svc') setScreen('services'); if(v==='prof') setScreen('profil'); }}
