@@ -49,50 +49,99 @@ const AGENT_POS: Record<string,string> = {
   hayet: 'center 20%',  // nouveau: femme costume noir + ECG
 };
 
-// ── VOIX par agent ────────────────────────────────────────────
-const FEMALE_NAMES = ['amélie','audrey','virginie','marie','samantha','karen','moira','fiona','victoria','tessa','alice','julie','google uk english female','female','femme','alice','anna'];
-const MALE_NAMES   = ['thomas','nicolas','daniel','alex','oliver','james','luca','henrik','google uk english male','male','homme'];
+// ═══════════════════════════════════════════════════════════
+// VITARA AI_VOICE_PERSONAS v2.0 — Source of truth
+// Chaque agent a son propre voice_id distinct + paramètres
+// ═══════════════════════════════════════════════════════════
+const VOICE_CONFIG: Record<string, {
+  gender:  'female' | 'male';
+  pitch:   number;   // Web Speech API: 0.5–2.0
+  rate:    number;
+  volume:  number;
+  pauseMs: number;
+  label:   string;
+  preview: Record<string, string>; // texte preview par langue
+}> = {
+  houda: {
+    gender:'female', pitch:1.15, rate:0.90, volume:0.95, pauseMs:250,
+    label:'Voix féminine',
+    preview:{
+      fr:'Bonjour, je suis Houda, votre assistante médicale VITARA. Comment puis-je vous aider ?',
+      en:"Hello, I'm Houda, VITARA's medical assistant. How can I help?",
+      ar:'مرحباً، أنا هدى، مساعدتك الطبية في فيتارا.',
+    },
+  },
+  hayet: {
+    gender:'female', pitch:1.12, rate:0.96, volume:0.95, pauseMs:250,
+    label:'Voix féminine',
+    preview:{
+      fr:'Bonjour, je suis Hayet. Je suis là pour vous aider à planifier vos soins.',
+      en:"Hello, I'm Hayet. I'm here to help you schedule your care.",
+      ar:'مرحباً، أنا حياة. أنا هنا لمساعدتك.',
+    },
+  },
+  said: {
+    gender:'male', pitch:0.80, rate:0.92, volume:0.96, pauseMs:280,
+    label:'Voix masculine',
+    preview:{
+      fr:'Bonjour, je suis Said. Je vais vous aider à trouver le bon rendez-vous pour vous.',
+      en:"Hello, I'm Said. I'll help you find the right appointment.",
+      ar:'مرحباً، أنا سعيد. سأساعدك في العثور على موعد مناسب.',
+    },
+  },
+  alain: {
+    gender:'male', pitch:0.70, rate:0.90, volume:0.97, pauseMs:320,
+    label:'Voix masculine mature',
+    preview:{
+      fr:'Bonjour, je suis Alain. Je vais vérifier les disponibilités pour vous.',
+      en:"Hello, I'm Alain. I'll check the available appointments for you.",
+      ar:'مرحباً، أنا آلان. سأتحقق من المواعيد المتاحة.',
+    },
+  },
+};
 
-function detectGender(voice: SpeechSynthesisVoice): 'female'|'male'|'unknown' {
-  const n = voice.name.toLowerCase();
-  if (MALE_NAMES.some(k   => n.includes(k))) return 'male';
-  if (FEMALE_NAMES.some(k => n.includes(k))) return 'female';
+// ── Mots-clés pour détection de genre dans le nom de voix ──
+const FEMALE_KW = ['amélie','audrey','virginie','marie','alice','julie','samantha','karen','moira','fiona','victoria','tessa','female','femme','google uk english female','anna'];
+const MALE_KW   = ['thomas','nicolas','daniel','alex','oliver','james','luca','henrik','male','homme','google uk english male'];
+
+function voiceGender(v: SpeechSynthesisVoice): 'female'|'male'|'unknown' {
+  const n = v.name.toLowerCase();
+  if (MALE_KW.some(k   => n.includes(k))) return 'male';
+  if (FEMALE_KW.some(k => n.includes(k))) return 'female';
   return 'unknown';
 }
 
-const AGENT_VOICE: Record<string, { gender:'female'|'male'; pitch:number; rate:number }> = {
-  houda: { gender:'female', pitch: 1.30, rate: 0.88 }, // clairement féminin
-  said:  { gender:'male',   pitch: 0.55, rate: 0.95 }, // clairement masculin
-  alain: { gender:'male',   pitch: 0.48, rate: 0.92 }, // encore plus grave
-  hayet: { gender:'female', pitch: 1.22, rate: 0.94 }, // féminin vif
-};
-
-function pickVoice(
+// ── Assigner des voice_id DISTINCTS à chaque agent ───────────
+// Appelé une fois quand les voix sont chargées
+function buildVoiceAssignments(
   voices: SpeechSynthesisVoice[],
-  langCode: string,
-  gender: 'female'|'male'
-): SpeechSynthesisVoice | undefined {
-  // Voix de la bonne langue
-  const byLang = voices.filter(v => v.lang.toLowerCase().startsWith(langCode.toLowerCase()));
-  const pool   = byLang.length > 0 ? byLang : voices;
+  lang:   string
+): Record<string, SpeechSynthesisVoice | null> {
+  const code = lang === 'ar' ? 'ar' : lang === 'en' ? 'en' : 'fr';
+  const pool  = voices.filter(v => v.lang.toLowerCase().startsWith(code));
+  const src   = pool.length > 0 ? pool : voices;
 
-  // 1. Correspondance exacte de genre
-  const exact = pool.filter(v => detectGender(v) === gender);
-  if (exact.length > 0) return exact[0];
+  // Séparer par genre détecté
+  const females  = src.filter(v => voiceGender(v) === 'female');
+  const males    = src.filter(v => voiceGender(v) === 'male');
+  const unknowns = src.filter(v => voiceGender(v) === 'unknown');
 
-  // 2. Exclure le genre opposé
-  const opposite = gender === 'male' ? 'female' : 'male';
-  const notOpposite = pool.filter(v => detectGender(v) !== opposite);
-  if (notOpposite.length > 0) {
-    // Pour male: prendre la dernière (souvent masculine sur Android)
-    // Pour female: prendre la première
-    return gender === 'male'
-      ? notOpposite[notOpposite.length - 1]
-      : notOpposite[0];
-  }
+  // Voix féminine (Houda, Hayet) — même pool, pitch différenciera
+  const femVoice  = females[0] || unknowns[0] || src[0];
 
-  // 3. Dernier recours: première de la langue, pitch compensera
-  return pool[0];
+  // Voix masculines — DEUX voice_id DISTINCTS si possible
+  const male1 = males[0]  || unknowns[1] || src[Math.min(1, src.length - 1)];
+  const male2 = males[1]  // deuxième voix masculine = DIFFERENT de male1
+              || males[0]  // si une seule voix male → même voix, pitch compensera
+              || unknowns[2]
+              || src[Math.min(2, src.length - 1)];
+
+  return {
+    houda: femVoice,
+    hayet: femVoice,   // même voix femelle, pitch/rate différents
+    said:  male1,      // voice_id 1 masculin
+    alain: male2,      // voice_id 2 masculin (distinct si possible)
+  };
 }
 
 function Avatar({ id, size=200, talking=false, color='#00D7C8' }: any) {
@@ -184,19 +233,51 @@ export default function PatientPage() {
   const greeted    = useRef(false);
   const histRef    = useRef(hist);
   const langRef    = useRef(lang);
-  const agentRef   = useRef(agent); // ref miroir pour speak() sans stale closure
+  const agentRef   = useRef(agent);
+  const voiceMap   = useRef<Record<string, SpeechSynthesisVoice | null>>({}); // voice_id par agent
 
   useEffect(() => {
     const s = document.createElement('style');
     s.textContent = CSS;
     document.head.appendChild(s);
     setMounted(true);
-    synthRef.current = typeof window !== 'undefined' ? window.speechSynthesis : null;
+    if (typeof window !== 'undefined') {
+      synthRef.current = window.speechSynthesis;
+
+      // Charger et assigner les voix dès qu'elles sont disponibles
+      const loadVoices = () => {
+        const voices = window.speechSynthesis.getVoices();
+        if (voices.length > 0) {
+          voiceMap.current = buildVoiceAssignments(voices, langRef.current);
+          // Log pour debug
+          console.log('[VITARA Voices]', {
+            houda: voiceMap.current.houda?.name,
+            hayet: voiceMap.current.hayet?.name,
+            said:  voiceMap.current.said?.name,
+            alain: voiceMap.current.alain?.name,
+          });
+        }
+      };
+
+      // Les voix se chargent de façon asynchrone sur certains navigateurs
+      loadVoices();
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
     return () => { s.remove(); };
   }, []);
 
+  // Réassigner les voix quand la langue change
+  useEffect(() => {
+    langRef.current = lang;
+    if (synthRef.current) {
+      const voices = synthRef.current.getVoices();
+      if (voices.length > 0) {
+        voiceMap.current = buildVoiceAssignments(voices, lang);
+      }
+    }
+  }, [lang]);
+
   useEffect(() => { histRef.current  = hist;  }, [hist]);
-  useEffect(() => { langRef.current  = lang;  }, [lang]);
   useEffect(() => { agentRef.current = agent; }, [agent]);
   useEffect(() => { chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: 'smooth' }); }, [msgs, slots, load]);
 
@@ -207,23 +288,28 @@ export default function PatientPage() {
     if (!synthRef.current || !mounted) return;
     try {
       synthRef.current.cancel();
-      const u   = new SpeechSynthesisUtterance(t);
-      const l   = langRef.current;
-      const cfg = AGENT_VOICE[agentRef.current.id] || AGENT_VOICE.houda;
+      const agentId = agentRef.current.id;
+      const cfg     = VOICE_CONFIG[agentId] || VOICE_CONFIG.houda;
+      const l       = langRef.current;
 
-      // Langue
-      u.lang  = l === 'ar' ? 'ar-SA' : l === 'en' ? 'en-US' : 'fr-FR';
-      const langCode = l === 'ar' ? 'ar' : l === 'en' ? 'en' : 'fr';
+      const u = new SpeechSynthesisUtterance(t);
+      u.lang   = l === 'ar' ? 'ar-SA' : l === 'en' ? 'en-US' : 'fr-FR';
+      u.pitch  = cfg.pitch;
+      u.rate   = cfg.rate;
+      u.volume = cfg.volume;
 
-      // Pitch/rate propre à l'agent (très différenciés)
-      u.pitch = cfg.pitch;
-      u.rate  = cfg.rate;
-
-      // Sélection de voix
-      const voices = synthRef.current.getVoices();
-      if (voices.length > 0) {
-        const chosen = pickVoice(voices, langCode, cfg.gender);
-        if (chosen) u.voice = chosen;
+      // Utiliser le voice_id ASSIGNÉ à cet agent (distinct par agent)
+      const assignedVoice = voiceMap.current[agentId];
+      if (assignedVoice) {
+        u.voice = assignedVoice;
+      } else {
+        // Voix pas encore chargées → forcer l'assignation maintenant
+        const voices = synthRef.current.getVoices();
+        if (voices.length > 0) {
+          voiceMap.current = buildVoiceAssignments(voices, l);
+          const v = voiceMap.current[agentId];
+          if (v) u.voice = v;
+        }
       }
 
       u.onstart = () => setVState('speaking');
@@ -564,8 +650,8 @@ export default function PatientPage() {
               </div>
               <div style={{fontSize:11,color:T.muted,marginBottom:10}}>
                 {curAgent.role}
-                <span style={{marginLeft:8,fontSize:10,color:AGENT_VOICE[curAgent.id]?.gender==='female'?T.pink:T.teal}}>
-                  {AGENT_VOICE[curAgent.id]?.gender==='female'?'🎙️ Voix féminine':'🎙️ Voix masculine'}
+                <span style={{marginLeft:8,fontSize:10,padding:'1px 7px',background:VOICE_CONFIG[curAgent.id]?.gender==='female'?`${T.pink}22`:`${T.teal}22`,color:VOICE_CONFIG[curAgent.id]?.gender==='female'?T.pink:T.teal,borderRadius:20,fontWeight:600}}>
+                  {VOICE_CONFIG[curAgent.id]?.label || '🎙️ Voix IA'}
                 </span>
               </div>
             </div>
@@ -585,6 +671,26 @@ export default function PatientPage() {
               ))}
             </div>
           </div>
+
+          {/* Bouton preview voix */}
+          <button onClick={()=>{
+            const cfg = VOICE_CONFIG[curAgent.id];
+            const previewText = cfg.preview[lang] || cfg.preview.fr;
+            if (synthRef.current) {
+              synthRef.current.cancel();
+              const u = new SpeechSynthesisUtterance(previewText);
+              u.lang   = lang === 'ar' ? 'ar-SA' : lang === 'en' ? 'en-US' : 'fr-FR';
+              u.pitch  = cfg.pitch;
+              u.rate   = cfg.rate;
+              u.volume = cfg.volume;
+              const v = voiceMap.current[curAgent.id];
+              if (v) u.voice = v;
+              synthRef.current.speak(u);
+            }
+          }} style={{width:'100%',marginBottom:8,padding:'11px',background:T.glass,border:`1.5px solid ${curAgent.color}55`,borderRadius:13,color:curAgent.color,fontSize:13,fontWeight:600,cursor:'pointer',backdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+            🔊 Écouter la voix de {curAgent.name}
+            <span style={{fontSize:10,color:T.muted}}>({VOICE_CONFIG[curAgent.id]?.label})</span>
+          </button>
 
           <button onClick={()=>{ greeted.current=false; startSession(curAgent,lang); }} style={{width:'100%',padding:'14px',background:`linear-gradient(135deg,${curAgent.color},${curAgent.color}CC)`,border:'none',borderRadius:15,color:'white',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:"'Space Grotesk',sans-serif",boxShadow:`0 6px 20px ${curAgent.color}40`}}>
             🎤 Parler avec {curAgent.name}
