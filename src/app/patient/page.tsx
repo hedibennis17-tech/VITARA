@@ -284,34 +284,54 @@ export default function PatientPage() {
   const T = theme === 'dark' ? DARK : LIGHT;
 
   // ── Synthèse vocale ──────────────────────────────────────
-  const speak = useCallback((t: string) => {
-    if (!synthRef.current || !mounted) return;
+  // Référence à l'audio ElevenLabs en cours
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const speak = useCallback(async (t: string) => {
+    if (!mounted) return;
+    const agentId = agentRef.current.id;
+
+    // Arrêter tout audio en cours
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+    synthRef.current?.cancel();
+
+    // ── 1. ElevenLabs (vraies voix humaines) ─────────────────
     try {
-      synthRef.current.cancel();
-      const agentId = agentRef.current.id;
-      const cfg     = VOICE_CONFIG[agentId] || VOICE_CONFIG.houda;
-      const l       = langRef.current;
+      const res = await fetch('/api/voice/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: t, agent: agentId }),
+      });
 
-      const u = new SpeechSynthesisUtterance(t);
-      u.lang   = l === 'ar' ? 'ar-SA' : l === 'en' ? 'en-US' : 'fr-FR';
-      u.pitch  = cfg.pitch;
-      u.rate   = cfg.rate;
-      u.volume = cfg.volume;
-
-      // Utiliser le voice_id ASSIGNÉ à cet agent (distinct par agent)
-      const assignedVoice = voiceMap.current[agentId];
-      if (assignedVoice) {
-        u.voice = assignedVoice;
-      } else {
-        // Voix pas encore chargées → forcer l'assignation maintenant
-        const voices = synthRef.current.getVoices();
-        if (voices.length > 0) {
-          voiceMap.current = buildVoiceAssignments(voices, l);
-          const v = voiceMap.current[agentId];
-          if (v) u.voice = v;
-        }
+      if (res.ok) {
+        const blob = await res.blob();
+        const url  = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        audioRef.current = audio;
+        audio.onplay   = () => setVState('speaking');
+        audio.onended  = () => { setVState('idle'); URL.revokeObjectURL(url); audioRef.current = null; };
+        audio.onerror  = () => { setVState('idle'); URL.revokeObjectURL(url); audioRef.current = null; };
+        await audio.play();
+        return; // ← ElevenLabs OK, on s'arrête ici
       }
+      // 501 = clé manquante → fallback Web Speech sans log d'erreur
+      if (res.status !== 501) console.warn('[TTS] ElevenLabs error', res.status);
+    } catch (e) {
+      console.warn('[TTS] ElevenLabs fetch failed:', e);
+    }
 
+    // ── 2. Fallback: Web Speech API (si ElevenLabs non dispo) ─
+    if (!synthRef.current) { setVState('idle'); return; }
+    try {
+      const cfg = VOICE_CONFIG[agentId] || VOICE_CONFIG.houda;
+      const l   = langRef.current;
+      const u   = new SpeechSynthesisUtterance(t);
+      u.lang    = l === 'ar' ? 'ar-SA' : l === 'en' ? 'en-US' : 'fr-FR';
+      u.pitch   = cfg.pitch;
+      u.rate    = cfg.rate;
+      u.volume  = cfg.volume;
+      const v   = voiceMap.current[agentId];
+      if (v) u.voice = v;
       u.onstart = () => setVState('speaking');
       u.onend   = () => setVState('idle');
       u.onerror = () => setVState('idle');
