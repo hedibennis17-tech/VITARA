@@ -504,12 +504,41 @@ export default function PatientPage() {
   );
 
   // ── DONE ─────────────────────────────────────────────────
+  // ── Sauvegarder le RDV dans localStorage dès l'arrivée sur 'done' ──
+  if (screen === 'done' && booking) {
+    try {
+      const saved = JSON.parse(localStorage.getItem('vitara_appointments') || '[]');
+      const exists = saved.some((a: any) => a.code === booking.code);
+      if (!exists) {
+        const appt = {
+          id:       `ai-${Date.now()}`,
+          code:     booking.code,
+          date:     booking.date,
+          time:     booking.time,
+          type:     booking.service || booking.dept,
+          provider: booking.provider,
+          dept:     booking.dept,
+          payer:    booking.payer || 'RAMQ',
+          mode:     booking.mode,
+          duration: booking.duration,
+          room:     booking.room,
+          status:   'confirmed',
+          color:    agent.color,
+          source:   'vitara_ai',
+          bookedAt: new Date().toISOString(),
+        };
+        localStorage.setItem('vitara_appointments', JSON.stringify([appt, ...saved].slice(0, 20)));
+      }
+    } catch { /* localStorage non dispo */ }
+  }
+
   if (screen === 'done' && booking) return (
     <div style={{minHeight:'100vh',background:T.bg,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24,color:T.text,fontFamily:"'Inter',sans-serif",maxWidth:420,margin:'0 auto'}}>
-      <div style={{width:70,height:70,borderRadius:'50%',background:`linear-gradient(135deg,${T.mint}22,${T.teal}14)`,border:`3px solid ${T.mint}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,marginBottom:16,animation:'fadeUp .4s ease'}}>✓</div>
+      <div style={{width:70,height:70,borderRadius:'50%',background:`linear-gradient(135deg,${T.mint}22,${T.teal}14)`,border:`3px solid ${T.mint}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,marginBottom:16}}>✓</div>
       <h2 style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:19,fontWeight:700,marginBottom:4,textAlign:'center'}}>Rendez-vous confirmé !</h2>
       <p style={{color:T.muted,fontSize:12,marginBottom:20}}>📱 SMS · 📧 Email envoyés</p>
-      <div style={{width:'100%',background:T.glass,border:`1.5px solid ${agent.color}30`,borderRadius:18,padding:18,marginBottom:16,backdropFilter:'blur(12px)'}}>
+
+      <div style={{width:'100%',background:T.glass,border:`1.5px solid ${agent.color}30`,borderRadius:18,padding:18,marginBottom:12,backdropFilter:'blur(12px)'}}>
         <div style={{marginBottom:12}}>
           <div style={{fontSize:16,fontWeight:700,fontFamily:"'Space Grotesk',sans-serif"}}>{booking.date}</div>
           <div style={{fontSize:13,color:agent.color,fontWeight:600}}>{booking.time}{booking.duration?' · '+booking.duration:''}</div>
@@ -524,9 +553,15 @@ export default function PatientPage() {
           </div>
         ))}
       </div>
+
+      {/* Lien portail patient */}
+      <a href="/patient-portal" style={{display:'block',width:'100%',marginBottom:12,padding:'13px',background:`linear-gradient(135deg,${T.teal}22,${T.purple}22)`,border:`1px solid ${T.teal}44`,borderRadius:12,textDecoration:'none',textAlign:'center',color:T.teal,fontSize:13,fontWeight:700}}>
+        📋 Voir dans mon portail patient →
+      </a>
+
       <div style={{display:'flex',gap:8,width:'100%'}}>
-        <button onClick={()=>{ setScreen('chat'); setBooking(null); }} style={{flex:1,padding:'12px',background:T.glass,border:`1px solid ${T.teal}`,borderRadius:11,color:T.teal,fontSize:13,fontWeight:600,cursor:'pointer',backdropFilter:'blur(6px)'}}>Autre demande</button>
-        <button onClick={resetAll} style={{flex:1,padding:'12px',background:`linear-gradient(135deg,${T.teal},${T.purple})`,border:'none',borderRadius:11,color:'white',fontSize:13,fontWeight:700,cursor:'pointer'}}>Terminer</button>
+        <button onClick={()=>{ setScreen('chat'); setBooking(null); }} style={{flex:1,padding:'11px',background:T.glass,border:`1px solid ${T.teal}`,borderRadius:11,color:T.teal,fontSize:13,fontWeight:600,cursor:'pointer',backdropFilter:'blur(6px)'}}>Autre demande</button>
+        <button onClick={resetAll} style={{flex:1,padding:'11px',background:`linear-gradient(135deg,${T.teal},${T.purple})`,border:'none',borderRadius:11,color:'white',fontSize:13,fontWeight:700,cursor:'pointer'}}>Terminer</button>
       </div>
     </div>
   );

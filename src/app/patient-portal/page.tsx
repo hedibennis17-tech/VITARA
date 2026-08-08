@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 // ── DESIGN TOKENS ─────────────────────────────────────────────
 const C = {
@@ -32,7 +32,7 @@ const PATIENT = {
   completion: 78,
 };
 
-const APPOINTMENTS = [
+const DEMO_APPOINTMENTS = [
   { id:'a1', date:'Lun 11 août 2026', time:'10h00', type:'Physiothérapie', provider:'Shaheer Haider, PT', status:'confirmed', dept:'Réadaptation', color:C.mint, reason:'Genou gauche — CNESST', mode:'En clinique', code:'VIT-8841' },
   { id:'a2', date:'Mar 19 août 2026', time:'14h30', type:'Médecine familiale', provider:'Dr. Fahd Awada', status:'scheduled', dept:'Soins primaires', color:C.teal, reason:'Bilan annuel', mode:'En clinique', code:'VIT-8902' },
   { id:'a3', date:'Jeu 28 août 2026', time:'09h00', type:'Psychologie', provider:'Dr. Amira Hassan', status:'scheduled', dept:'Santé mentale', color:C.purple, reason:'Suivi TCC', mode:'Téléconsultation', code:'VIT-9011' },
@@ -134,10 +134,24 @@ function SectionHeader({ title, sub, action }: { title:string; sub?:string; acti
 }
 
 // ── ACCUEIL ───────────────────────────────────────────────────
-function Accueil({ onNav }: { onNav:(n:Nav)=>void }) {
-  const next = APPOINTMENTS[0];
+function Accueil({ onNav, appointments, newRdvCount }: { onNav:(n:Nav)=>void; appointments:any[]; newRdvCount:number }) {
+  const next = appointments[0];
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+
+      {/* Bannière nouveau RDV depuis VITARA AI */}
+      {newRdvCount > 0 && (
+        <div style={{ padding:'12px 16px', background:`${C.teal}18`, border:`1px solid ${C.teal}44`, borderRadius:12, display:'flex', alignItems:'center', gap:12 }}>
+          <span style={{ fontSize:20 }}>🤖</span>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:12, fontWeight:700, color:C.teal }}>
+              {newRdvCount} rendez-vous ajouté{newRdvCount>1?'s':''} par VITARA AI aujourd'hui
+            </div>
+            <div style={{ fontSize:11, color:C.muted, marginTop:1 }}>Réservé via l'agent vocal · Synchronisé automatiquement</div>
+          </div>
+          <button onClick={()=>onNav('rdv')} style={{ padding:'6px 12px', background:C.teal, border:'none', borderRadius:8, color:C.bg, fontSize:11, fontWeight:700, cursor:'pointer' }}>Voir →</button>
+        </div>
+      )}
 
       {/* Prochain RDV */}
       <Card style={{ padding:20, background:`linear-gradient(135deg,${C.s2},${C.s1})`, border:`1px solid ${next.color}44`, position:'relative', overflow:'hidden' }}>
@@ -225,12 +239,15 @@ function Accueil({ onNav }: { onNav:(n:Nav)=>void }) {
 }
 
 // ── MES RDV ───────────────────────────────────────────────────
-function MesRdv() {
+function MesRdv({ appointments }: { appointments: any[] }) {
   const [tab, setTab] = useState<'upcoming'|'past'>('upcoming');
   return (
     <div>
-      <SectionHeader title="Mes rendez-vous" sub={`${APPOINTMENTS.length} à venir`} action={
-        <button style={{ padding:'8px 14px', background:`linear-gradient(135deg,${C.teal},${C.purple})`, border:'none', borderRadius:9, color:'white', fontSize:12, fontWeight:700, cursor:'pointer' }}>+ Nouveau RDV</button>
+      <SectionHeader title="Mes rendez-vous" sub={`${appointments.length} à venir`} action={
+        <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+          <a href="/patient" style={{ padding:'8px 12px', background:C.s2, border:`1px solid ${C.teal}44`, borderRadius:9, color:C.teal, fontSize:11, fontWeight:600, textDecoration:'none', display:'flex', alignItems:'center', gap:5 }}>🎤 VITARA</a>
+          <button style={{ padding:'8px 14px', background:`linear-gradient(135deg,${C.teal},${C.purple})`, border:'none', borderRadius:9, color:'white', fontSize:12, fontWeight:700, cursor:'pointer' }}>+ Nouveau RDV</button>
+        </div>
       }/>
       <div style={{ display:'flex', gap:4, marginBottom:16, background:C.s2, borderRadius:10, padding:4 }}>
         {[['upcoming','À venir'],['past','Passés']].map(([k,l])=>(
@@ -238,8 +255,11 @@ function MesRdv() {
         ))}
       </div>
       <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-        {(tab==='upcoming'?APPOINTMENTS:PAST_APPTS).map(a=>(
-          <Card key={a.id} style={{ padding:16, borderLeft:`3px solid ${a.color}` }}>
+        {(tab==='upcoming'?appointments:PAST_APPTS).map(a=>(
+          <Card key={a.id} style={{ padding:16, borderLeft:`3px solid ${a.color}`, position:'relative' }}>
+            {(a as any).source === 'vitara_ai' && (
+              <span style={{ position:'absolute', top:10, right:10, fontSize:9, padding:'2px 7px', background:`${C.teal}22`, color:C.teal, borderRadius:20, fontWeight:700, border:`1px solid ${C.teal}33` }}>🤖 Via VITARA</span>
+            )}
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8 }}>
               <div>
                 <div style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:14, fontWeight:700, color:C.text }}>{a.type}</div>
@@ -394,13 +414,21 @@ function Documents() {
 }
 
 // ── ACTIVITÉS ─────────────────────────────────────────────────
-function Activites() {
+function Activites({ aiAppointments }: { aiAppointments: any[] }) {
+  // Générer des entrées d'activité depuis les RDV IA
+  const aiActivities = aiAppointments.map((a: any) => ({
+    icon: '🤖', color: C.teal,
+    text: `RDV confirmé via VITARA AI — ${a.type} avec ${a.provider} (${a.code})`,
+    time: new Date(a.bookedAt).toLocaleString('fr-CA', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }),
+  }));
+
+  const allActivities = [...aiActivities, ...ACTIVITIES];
   return (
     <div>
       <SectionHeader title="Journal d'activité" sub="Historique de votre compte"/>
       <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
-        {ACTIVITIES.map((a,i)=>(
-          <div key={i} style={{ display:'flex', gap:12, padding:'12px 0', borderBottom:i<ACTIVITIES.length-1?`1px solid ${C.border}22`:'none' }}>
+        {allActivities.map((a,i)=>(
+          <div key={i} style={{ display:'flex', gap:12, padding:'12px 0', borderBottom:i<allActivities.length-1?`1px solid ${C.border}22`:'none' }}>
             <div style={{ width:36, height:36, borderRadius:10, background:`${a.color}18`, border:`1px solid ${a.color}33`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, flexShrink:0 }}>{a.icon}</div>
             <div style={{ flex:1 }}>
               <div style={{ fontSize:12, color:C.text, lineHeight:1.4 }}>{a.text}</div>
@@ -477,16 +505,46 @@ function Messages() {
 
 // ── MAIN ──────────────────────────────────────────────────────
 export default function PatientPortal() {
-  const [nav, setNav] = useState<Nav>('accueil');
+  const [nav, setNav]             = useState<Nav>('accueil');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [aiAppointments, setAiAppointments] = useState<any[]>([]);
+  const [newRdvCount, setNewRdvCount] = useState(0);
+
+  // ── Charger les RDV confirmés par VITARA AI depuis localStorage ──
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('vitara_appointments') || '[]');
+      if (stored.length > 0) {
+        setAiAppointments(stored);
+        // Compter les RDV ajoutés dans les dernières 24h
+        const recent = stored.filter((a: any) => {
+          const bookedAt = new Date(a.bookedAt).getTime();
+          return Date.now() - bookedAt < 24 * 60 * 60 * 1000;
+        });
+        setNewRdvCount(recent.length);
+      }
+    } catch { /* localStorage non dispo */ }
+  }, []);
+
+  // Fusionner RDV IA + démo (dédupliqués par code)
+  const APPOINTMENTS = [
+    ...aiAppointments.map((a: any) => ({
+      id: a.id, date: a.date, time: a.time,
+      type: a.type, provider: a.provider, dept: a.dept || a.type,
+      status: 'confirmed', color: a.color || C.teal,
+      reason: a.service, mode: a.mode, code: a.code,
+      source: 'vitara_ai',
+    })),
+    ...DEMO_APPOINTMENTS.filter(d => !aiAppointments.some((a: any) => a.code === d.code)),
+  ];
 
   const content: Record<Nav, JSX.Element> = {
-    accueil:    <Accueil onNav={setNav}/>,
-    rdv:        <MesRdv/>,
+    accueil:    <Accueil onNav={setNav} appointments={APPOINTMENTS} newRdvCount={newRdvCount}/>,
+    rdv:        <MesRdv appointments={APPOINTMENTS}/>,
     dossier:    <MonDossier/>,
     assurances: <Assurances/>,
     documents:  <Documents/>,
-    activites:  <Activites/>,
+    activites:  <Activites aiAppointments={aiAppointments}/>,
     profil:     <MonProfil/>,
     messages:   <Messages/>,
   };
