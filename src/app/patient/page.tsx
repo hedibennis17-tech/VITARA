@@ -510,7 +510,7 @@ export default function PatientPage() {
   }, [listen, stopListen, startMic]);
 
   // ── Démarrer une session chat (UNE SEULE bienvenue) ──────
-  const startSession = useCallback((a: typeof AGENTS[0], l: string = 'fr') => {
+  const startSession = useCallback((a: typeof AGENTS[0], l: string = 'fr', initialMsg?: string) => {
     synthRef.current?.cancel();
     setAgent(a); setLang(l); langRef.current = l;
     setScreen('chat'); setVocal(false);
@@ -533,7 +533,13 @@ export default function PatientPage() {
       // BUG FIX: le greeting va dans msgs (affichage) mais PAS dans hist
       // Groq rejette si messages[0].role === 'assistant'
       // hist reste vide → le premier appel API aura messages[0].role === 'user' ✓
-      setMsgs([{ role: 'ai', text: g }]);
+      if (initialMsg) {
+        // Service card: afficher le message patient D'ABORD, puis la réponse de l'agent
+        setMsgs([{ role: 'patient', text: initialMsg }, { role: 'ai', text: g }]);
+      } else {
+        // Chat direct: afficher le greeting d'abord
+        setMsgs([{ role: 'ai', text: g }]);
+      }
       setHist([]); histRef.current = [];
       setTimeout(() => speak(g), 500);
     }
@@ -579,8 +585,8 @@ export default function PatientPage() {
     <ScreenServices T={T} onBack={()=>setScreen('home')} onBook={bookHandler} onNav={navHandler}
       onSelectService={(msg:string)=>{
         greeted.current=false;
-        startSession(agent, lang);
-        setTimeout(()=>sendMsg(msg), 700);
+        startSession(agent, lang, msg);
+        setTimeout(()=>sendMsg(msg), 900);
       }}/>
   );
 
@@ -674,7 +680,7 @@ export default function PatientPage() {
           <div style={{fontSize:10,fontWeight:600,color:T.muted,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:10}}>Nos services</div>
 
           {/* URGENCES — pleine largeur, rouge, proéminent */}
-          <button onClick={()=>{ greeted.current=false; startSession(agent,'fr'); setTimeout(()=>sendMsg("J'ai besoin d'une consultation urgente aujourd'hui"),700); }}
+          <button onClick={()=>{ greeted.current=false; startSession(agent,'fr',"J'ai besoin d'une consultation urgente aujourd'hui"); setTimeout(()=>sendMsg("J'ai besoin d'une consultation urgente aujourd'hui"),900); }}
             style={{width:'100%',height:90,borderRadius:14,overflow:'hidden',position:'relative',border:'none',cursor:'pointer',padding:0,marginBottom:8,display:'block'}}>
             <img src="/services/urgences.png" alt="Urgences" style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center'}}/>
             <div style={{position:'absolute',inset:0,background:'linear-gradient(to right,rgba(239,68,68,0.75),rgba(0,0,0,0.4))'}}/>
@@ -692,7 +698,7 @@ export default function PatientPage() {
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
             {SERVICES_HOME.filter(s=>!s.full).map(s=>(
               <button key={s.id}
-                onClick={()=>{ greeted.current=false; startSession(agent,'fr'); setTimeout(()=>sendMsg(s.msg),700); }}
+                onClick={()=>{ greeted.current=false; startSession(agent,'fr',s.msg); setTimeout(()=>sendMsg(s.msg),900); }}
                 style={{height:130,borderRadius:13,overflow:'hidden',position:'relative',border:'none',cursor:'pointer',padding:0}}>
                 <img src={s.img} alt={s.title} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top'}}/>
                 {/* Gradient sombre en bas */}
@@ -711,7 +717,7 @@ export default function PatientPage() {
           {/* Médecins de famille — pleine largeur */}
           {SERVICES_HOME.filter(s=>s.full && s.id!=='urgences').map(s=>(
             <button key={s.id}
-              onClick={()=>{ greeted.current=false; startSession(agent,'fr'); setTimeout(()=>sendMsg(s.msg),700); }}
+              onClick={()=>{ greeted.current=false; startSession(agent,'fr',s.msg); setTimeout(()=>sendMsg(s.msg),900); }}
               style={{width:'100%',height:110,borderRadius:13,overflow:'hidden',position:'relative',border:'none',cursor:'pointer',padding:0,marginTop:8,display:'block'}}>
               <img src={s.img} alt={s.title} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center 20%'}}/>
               <div style={{position:'absolute',inset:0,background:'linear-gradient(to right,rgba(139,92,246,0.75) 0%,rgba(0,0,0,0.3) 60%)'}}/>
@@ -1061,17 +1067,27 @@ export default function PatientPage() {
             </div>
           </div>
         ))}
-        {/* Créneaux */}
+        {/* Créneaux cliquables — confirmer au clic ou avec ✓ */}
         {slots&&(
           <div style={{animation:'fadeUp .3s ease',marginTop:4}}>
-            <div style={{fontSize:11,color:T.muted,textAlign:'center',marginBottom:7}}>📅 Choisissez un créneau :</div>
+            <div style={{fontSize:11,color:T.muted,textAlign:'center',marginBottom:8,fontWeight:600}}>📅 Choisissez votre créneau :</div>
             {slots.map((s:any)=>(
-              <button key={s.id} onClick={()=>setSel(s.id)} style={{width:'100%',marginBottom:6,padding:'11px 13px',background:sel===s.id?`${agent.color}18`:T.glass,border:`1.5px solid ${sel===s.id?agent.color:T.border}`,borderRadius:11,cursor:'pointer',textAlign:'left',backdropFilter:'blur(8px)',transition:'all .2s'}}>
-                <div style={{fontSize:13,fontWeight:600,color:T.text,marginBottom:2}}>📅 {s.label}</div>
-                <div style={{fontSize:11,color:T.muted}}>{s.provider} · {s.dept}{s.duration?' · '+s.duration:''}</div>
+              <button key={s.id} onClick={()=>{
+                setSel(s.id);
+                // Confirmer immédiatement au 2e clic ou après sélection
+                if(sel === s.id) { confirmSlot(); }
+              }} style={{width:'100%',marginBottom:8,padding:'13px 14px',background:sel===s.id?`${agent.color}22`:T.glass,border:`2px solid ${sel===s.id?agent.color:T.border}`,borderRadius:12,cursor:'pointer',textAlign:'left',backdropFilter:'blur(8px)',transition:'all .2s',position:'relative'}}>
+                {sel===s.id&&<span style={{position:'absolute',top:10,right:12,fontSize:16,color:agent.color}}>✓</span>}
+                <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:14,fontWeight:700,color:sel===s.id?agent.color:T.text,marginBottom:3}}>{s.label}</div>
+                <div style={{fontSize:11,color:T.muted}}>{s.provider}</div>
+                <div style={{fontSize:10,color:T.muted,marginTop:2}}>{s.dept}{s.duration?' · '+s.duration:''}</div>
               </button>
             ))}
-            {sel&&<button onClick={confirmSlot} style={{width:'100%',padding:'11px',background:`linear-gradient(135deg,${agent.color},${agent.color}CC)`,border:'none',borderRadius:11,color:'white',fontSize:13,fontWeight:700,cursor:'pointer'}}>✓ Confirmer ce créneau</button>}
+            {sel&&(
+              <button onClick={confirmSlot} style={{width:'100%',padding:'13px',background:`linear-gradient(135deg,${agent.color},${agent.color}CC)`,border:'none',borderRadius:12,color:'white',fontSize:14,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+                ✓ Confirmer ce créneau
+              </button>
+            )}
           </div>
         )}
         {load&&<div style={{display:'flex',alignItems:'center',gap:5,padding:'4px 6px'}}>
