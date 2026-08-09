@@ -104,9 +104,12 @@ export async function POST(req: NextRequest) {
     if (phoneNew && newState.phone?.value) {
       const profile = await loadProfile(newState.phone.value);
       if (Object.keys(profile).length>0) {
-        // Ne pas écraser les champs confirmés dans CE TOUR (ex: nom vient d'être donné)
+        // Ne JAMAIS écraser un champ déjà CONFIRMED dans newState (peu importe quand)
         const safe = Object.fromEntries(
-          Object.entries(profile).filter(([k]) => !(updates as any)[k]?.value)
+          Object.entries(profile).filter(([k]) => {
+            const cur = (newState as any)[k];
+            return !cur?.value || cur?.status !== 'confirmed';
+          })
         );
         if (Object.keys(safe).length>0) {
           newState = applyUpdates(newState, safe as any);
