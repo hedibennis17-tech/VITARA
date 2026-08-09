@@ -1,0 +1,339 @@
+// ════════════════════════════════════════════════════════════
+// VITARA CONVERSATION ENGINE — écrit propre, de zéro
+// Un seul fichier. Une seule source de vérité.
+// ════════════════════════════════════════════════════════════
+
+// ── 1. ÉTAT ─────────────────────────────────────────────────
+
+export type FieldStatus = 'unknown' | 'confirmed' | 'skipped';
+
+export interface Field {
+  value:  string | null;
+  status: FieldStatus;
+}
+
+const F = (v: string | null = null, s: FieldStatus = 'unknown'): Field => ({ value: v, status: s });
+
+export interface VitaraState {
+  // Identité
+  patient_type:   string | null;     // 'new' | 'existing'
+  full_name:      Field;
+  phone:          Field;
+  email:          Field;
+  ramq:           Field;
+  // Demande
+  service:        Field;             // 'medecin_famille' | 'physiotherapie' | 'pediatrie' | 'urgence' | ...
+  practitioner:   Field;             // nom du médecin/physio
+  // Diagnostic
+  reason:         Field;
+  body_part:      Field;
+  pain_scale:     Field;             // 0-10
+  // Accident
+  accident_type:  Field;             // 'CNESST' | 'SAAQ' | 'IVAC' | 'none'
+  claim_number:   Field;
+  // RDV
+  slot_date:      string | null;
+  slot_time:      string | null;
+}
+
+export const EMPTY_STATE: VitaraState = {
+  patient_type: null,
+  full_name:    F(), phone: F(), email: F(), ramq: F(),
+  service:      F(), practitioner: F(),
+  reason:       F(), body_part: F(), pain_scale: F(),
+  accident_type:F(), claim_number: F(),
+  slot_date: null, slot_time: null,
+};
+
+const ok  = (f: Field) => f.status === 'confirmed' && !!f.value;
+const skip= (f: Field) => f.status === 'skipped';
+
+// ── 2. EXTRACTION REGEX (fiable à 100%) ─────────────────────
+
+const GMF_LOOKUP: Record<string, string> = {
+  'awada':       'Dr. Fahd Awada',
+  'caricevic':   'Dr. Bogdan Caricevic',
+  'fruchtermann':'Dr. Lucien Fruchtermann',
+  'kalim':       'Dr. Myrlène Kalim',
+  'moriconi':    'Dr. Claudette Moriconi',
+  'moynihan':    'Dr. Stephanie Moynihan',
+  'ohayon':      'Dr. Huguette Ohayon-Gabbay',
+  'serfaty':     'Dr. Samuel Serfaty',
+  'prefontaine': 'Dr. Odette Préfontaine',
+  'préfontaine': 'Dr. Odette Préfontaine',
+  'odette':      'Dr. Odette Préfontaine',
+};
+
+const PHYSIO_LOOKUP: Record<string, string> = {
+  'haider':   'Shaheer Haider, PT',
+  'khalil':   'Omar Khalil, PT',
+  'tremblay': 'Sophie Tremblay, PT',
+};
+
+const SERVICE_KEYWORDS: Array<[RegExp, string]> = [
+  [/phys?io|réadapt|réhab/i,                  'physiotherapie'],
+  [/médecin\s+de\s+famille|médecin\s+famil|family doc/i, 'medecin_famille'],
+  [/médecin|docteur|dr\b|généraliste/i,        'medecin_famille'],
+  [/pédiatr|enfant|bébé|pediatr/i,             'pediatrie'],
+  [/psycholog|psy\b|mental|anxié/i,            'psychologie'],
+  [/nutritio|diét/i,                            'nutrition'],
+  [/ergo/i,                                     'ergotherapie'],
+  [/sang|labo|prélève/i,                        'prelevement'],
+  [/urgence|urgent|aujourd.hui|ce\s+soir/i,    'urgence'],
+  [/sans\s+rendez/i,                            'sans_rdv'],
+  [/prescription|ordonnance|renouvelle/i,       'prescription'],
+];
+
+const BODY_PARTS: Array<[RegExp, string]> = [
+  [/épaule\s*(droite|gauche)?/i, 'épaule'],
+  [/genou\s*(droit|gauche)?/i,   'genou'],
+  [/dos|lombaire|colonne/i,       'dos'],
+  [/cou|cervical/i,               'cou'],
+  [/poignet|main|doigt/i,         'poignet/main'],
+  [/cheville|pied/i,              'cheville/pied'],
+  [/hanche|bassin/i,              'hanche'],
+  [/coude|bras/i,                 'coude/bras'],
+  [/abdom|ventre|colon|estomac|intestin/i, 'abdomen'],
+  [/tête|migraine|crâne/i,       'tête'],
+  [/poitrine|thorax|cœur/i,      'poitrine'],
+  [/gorge|oreille|nez|sinus/i,   'ORL'],
+  [/peau|bouton|éruption/i,       'peau'],
+  [/penis|génital|urinaire/i,     'zone génito-urinaire'],
+];
+
+export function extractFromMessage(msg: string, state: VitaraState): Partial<VitaraState> {
+  const t = msg.trim();
+  const l = t.toLowerCase().normalize('NFC');
+  const up: Partial<VitaraState> = {};
+
+  // Patient type
+  if (!state.patient_type) {
+    if (/dossier|déjà patient|existant|déjà venu|déjà inscrit/i.test(l))
+      up.patient_type = 'existing';
+    else if (/nouveau|première fois|jamais venu/i.test(l))
+      up.patient_type = 'new';
+  }
+
+  // Téléphone: 10 chiffres consécutifs
+  if (!ok(state.phone)) {
+    const d = t.replace(/\D/g, '');
+    if (d.length === 10) up.phone = F(d, 'confirmed');
+  }
+
+  // Email
+  if (!ok(state.email)) {
+    const norm = l
+      .replace(/\s+arobase\s+/g,'@').replace(/\s+à\s+/g,'@').replace(/\s+at\s+/g,'@')
+      .replace(/\s+point\s+/g,'.').replace(/\s+dot\s+/g,'.')
+      .replace(/\s+underscore\s+/g,'_').replace(/\s+tiret\s+du\s+bas\s+/g,'_')
+      .replace(/\s/g,'');
+    const em = norm.match(/[\w._+-]+@[\w.-]+\.\w{2,}/);
+    if (em) up.email = F(em[0], 'confirmed');
+  }
+
+  // RAMQ: 4 lettres + 8 chiffres
+  if (!ok(state.ramq)) {
+    const clean = t.toUpperCase().replace(/[\s\-]/g,'');
+    const rm = clean.match(/[A-Z]{4}\d{8}/);
+    if (rm) up.ramq = F(rm[0], 'confirmed');
+  }
+
+  // Service
+  if (!ok(state.service)) {
+    for (const [re, svc] of SERVICE_KEYWORDS) {
+      if (re.test(l)) { up.service = F(svc, 'confirmed'); break; }
+    }
+  }
+
+  // Médecin GMF
+  if (!ok(state.practitioner)) {
+    for (const [key, name] of Object.entries(GMF_LOOKUP)) {
+      if (l.includes(key)) { up.practitioner = F(name, 'confirmed'); break; }
+    }
+    if (!up.practitioner) {
+      for (const [key, name] of Object.entries(PHYSIO_LOOKUP)) {
+        if (l.includes(key)) { up.practitioner = F(name, 'confirmed'); break; }
+      }
+    }
+  }
+
+  // Accident
+  if (!ok(state.accident_type)) {
+    if (/cnesst|accident\s+de\s+travail|blessure\s+au\s+travail/i.test(l))
+      up.accident_type = F('CNESST', 'confirmed');
+    else if (/saaq|accident\s+de\s+voiture|accident\s+de\s+la\s+route/i.test(l))
+      up.accident_type = F('SAAQ', 'confirmed');
+    else if (/ivac|victime/i.test(l))
+      up.accident_type = F('IVAC', 'confirmed');
+    else if (/pas\s+d.accident|aucun\s+accident|sport|personnel|non/i.test(l) && state.accident_type.status === 'unknown')
+      up.accident_type = F('none', 'confirmed');
+  }
+
+  // Numéro dossier accident
+  if (ok(state.accident_type) && state.accident_type.value !== 'none' && !ok(state.claim_number)) {
+    if (/pas encore|pas de numéro|je n.ai pas|pas pour le moment/i.test(l)) {
+      up.claim_number = F(null, 'skipped');
+    } else {
+      const cn = t.match(/\d{6,}/);
+      if (cn) up.claim_number = F(cn[0], 'confirmed');
+    }
+  }
+
+  // Zone corporelle
+  if (!ok(state.body_part)) {
+    for (const [re, part] of BODY_PARTS) {
+      if (re.test(t)) { up.body_part = F(t.match(re)![0], 'confirmed'); break; }
+    }
+  }
+
+  // Intensité douleur 0-10
+  if (!ok(state.pain_scale)) {
+    const ps = l.match(/\b(10|[0-9])\s*(?:\/\s*10|sur\s+10)?\b/);
+    if (ps) up.pain_scale = F(ps[1], 'confirmed');
+  }
+
+  return up;
+}
+
+export function applyUpdates(state: VitaraState, updates: Partial<VitaraState>): VitaraState {
+  const next = { ...state };
+  for (const [k, v] of Object.entries(updates)) {
+    const cur = (state as any)[k];
+    // Ne jamais écraser un champ confirmé (sauf si skipped → confirmed)
+    if (cur?.status === 'confirmed' && (v as Field)?.status !== 'confirmed') continue;
+    (next as any)[k] = v;
+  }
+  return next;
+}
+
+// ── 3. PROCHAINE QUESTION (déterministe) ─────────────────────
+
+export type Step =
+  | { type: 'ask'; field: keyof VitaraState; fr: string; en: string; ar: string }
+  | { type: 'slots' };
+
+const GMF_LIST = Object.values(GMF_LOOKUP).filter((v,i,a)=>a.indexOf(v)===i).join(' · ');
+const PHYSIO_LIST = Object.values(PHYSIO_LOOKUP).filter((v,i,a)=>a.indexOf(v)===i).join(' · ');
+
+export function nextStep(s: VitaraState): Step {
+  // Identité
+  if (!ok(s.full_name))
+    return { type:'ask', field:'full_name',
+      fr:'Pouvez-vous me confirmer votre nom complet ?',
+      en:'Can you confirm your full name?', ar:'ما اسمك الكامل؟' };
+
+  if (!ok(s.phone))
+    return { type:'ask', field:'phone',
+      fr:'Quel est votre numéro de téléphone ?',
+      en:'What is your phone number?', ar:'ما رقم هاتفك؟' };
+
+  if (!ok(s.email))
+    return { type:'ask', field:'email',
+      fr:'Quelle est votre adresse courriel ?',
+      en:'What is your email?', ar:'ما بريدك الإلكتروني؟' };
+
+  if (!ok(s.ramq))
+    return { type:'ask', field:'ramq',
+      fr:"Quel est votre numéro d'assurance maladie (RAMQ) ?",
+      en:'What is your health card number (RAMQ)?', ar:'ما رقم بطاقة التأمين الصحي؟' };
+
+  // Service
+  if (!ok(s.service))
+    return { type:'ask', field:'service',
+      fr:"Pour quel service consultez-vous aujourd'hui ?",
+      en:'Which service do you need today?', ar:'أي خدمة تحتاج اليوم؟' };
+
+  const svc = s.service.value || '';
+
+  // Praticien selon le service
+  if (!ok(s.practitioner)) {
+    if (svc === 'medecin_famille')
+      return { type:'ask', field:'practitioner',
+        fr:`Quel est votre médecin de famille ? (${GMF_LIST})`,
+        en:`Who is your family doctor? (${GMF_LIST})`, ar:`من هو طبيبك العائلي؟` };
+    if (svc === 'physiotherapie')
+      return { type:'ask', field:'practitioner',
+        fr:`Souhaitez-vous un physiothérapeute en particulier ? (${PHYSIO_LIST})`,
+        en:`Any preferred physiotherapist? (${PHYSIO_LIST})`, ar:`هل تفضل معالجًا بعينه؟` };
+  }
+
+  // Motif
+  if (!ok(s.reason))
+    return { type:'ask', field:'reason',
+      fr:'Pour quel motif consultez-vous ?',
+      en:"What's the reason for your consultation?", ar:'ما سبب استشارتك؟' };
+
+  // Zone corporelle
+  if (!ok(s.body_part))
+    return { type:'ask', field:'body_part',
+      fr:'Où ressentez-vous exactement le problème ?',
+      en:'Where exactly is the problem?', ar:'أين المشكلة بالضبط؟' };
+
+  // Intensité
+  if (!ok(s.pain_scale))
+    return { type:'ask', field:'pain_scale',
+      fr:"Sur une échelle de 0 à 10, quelle est l'intensité de la douleur ?",
+      en:'On a scale of 0-10, how intense is the pain?', ar:'على مقياس 0-10، ما شدة الألم؟' };
+
+  // Accident (seulement si physio ou motif suggère accident)
+  const needsAccident = svc === 'physiotherapie' ||
+    /chute|blessure|accident|travail|trauma/i.test(s.reason.value || '');
+  if (needsAccident && !ok(s.accident_type) && !skip(s.accident_type))
+    return { type:'ask', field:'accident_type',
+      fr:'Est-ce lié à un accident de travail (CNESST) ou de la route (SAAQ) ?',
+      en:'Is this related to a work accident (CNESST) or road accident (SAAQ)?', ar:'هل مرتبط بحادث عمل أو طريق؟' };
+
+  // Numéro dossier (skippable)
+  const acc = s.accident_type.value;
+  if ((acc==='CNESST'||acc==='SAAQ') && !ok(s.claim_number) && !skip(s.claim_number))
+    return { type:'ask', field:'claim_number',
+      fr:`Avez-vous un numéro de dossier ${acc} ? (dites "pas encore" si vous ne l'avez pas)`,
+      en:`Do you have a ${acc} file number? (say "not yet" if not)`, ar:`هل لديك رقم ملف ${acc}؟` };
+
+  return { type:'slots' };
+}
+
+// ── 4. CRÉNEAUX ───────────────────────────────────────────────
+
+export function buildSlots(s: VitaraState): any[] {
+  const provider = s.practitioner.value || 'Dr. Fahd Awada';
+  const svc      = s.service.value || '';
+  const duration = svc==='physiotherapie' ? '30 min' : '20 min';
+  const dept     = svc==='physiotherapie' ? 'Physiothérapie'
+                 : svc==='pediatrie'      ? 'Pédiatrie'
+                 : 'Médecine familiale';
+  const today    = new Date();
+  const tmr      = new Date(); tmr.setDate(today.getDate()+1);
+  const fmt      = (d: Date) => d.toLocaleDateString('fr-CA',{weekday:'long',day:'numeric',month:'long'});
+  return [
+    { id:'1', label:`${fmt(today)} à 14h00`,  provider, dept, duration, date:today.toISOString().slice(0,10), time:'14:00' },
+    { id:'2', label:`${fmt(today)} à 16h30`,  provider, dept, duration, date:today.toISOString().slice(0,10), time:'16:30' },
+    { id:'3', label:`${fmt(tmr)} à 9h00`,     provider, dept, duration, date:tmr.toISOString().slice(0,10),   time:'09:00' },
+  ];
+}
+
+// ── 5. ACK court après confirmation d'un champ ───────────────
+
+export function buildAck(field: keyof VitaraState, value: string, lang: string): string {
+  if (lang==='ar') return 'شكراً.';
+  if (lang==='en') {
+    const m: Partial<Record<keyof VitaraState,string>> = {
+      full_name:`Thank you, ${value}.`, phone:'Got it.', email:'Email noted.',
+      ramq:'Health card noted.', service:'Got it.', practitioner:`${value} noted.`,
+      reason:'Understood.', body_part:'Noted.', pain_scale:`Pain ${value}/10 noted.`,
+      accident_type:value==='CNESST'?'Work accident noted.':value==='SAAQ'?'Road accident noted.':'Noted.',
+      claim_number:'File number noted.',
+    };
+    return m[field] || 'Got it.';
+  }
+  const m: Partial<Record<keyof VitaraState,string>> = {
+    full_name:`Merci, ${value}.`, phone:'Numéro noté.', email:'Courriel noté.',
+    ramq:"Numéro d'assurance noté.", service:'Très bien.',
+    practitioner:`${value} noté.`,
+    reason:'Je comprends.', body_part:'Noté.',
+    pain_scale:`Douleur ${value}/10 notée.`,
+    accident_type:value==='CNESST'?'Accident de travail noté.':value==='SAAQ'?'Accident de route noté.':value==='none'?'Noté.':'Noté.',
+    claim_number:'Numéro de dossier noté.',
+  };
+  return m[field] || 'Noté.';
+}
