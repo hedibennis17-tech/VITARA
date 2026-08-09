@@ -95,15 +95,44 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── Extraction contextuelle du nom ─────────────────────────
-    // Si la dernière question était "full_name" et pas encore confirmé → tenter extraction
-    if (!newState.full_name?.value && !newState.full_name?.status?.includes('confirmed')) {
-      const pendingField = (conversation_state as any)?._pending_field;
-      if (pendingField === 'full_name' || !Object.keys(updates).length) {
-        const extractedName = extractNameFromReply(lastMsg);
-        if (extractedName) {
-          newState = applyUpdates(newState, { full_name: { value: extractedName, status: 'confirmed' as const } });
-          if (!updates.full_name) (updates as any).full_name = { value: extractedName, status: 'confirmed' };
+    // ── Extraction contextuelle pour champs texte libre ─────────
+    // Quand le serveur attendait un champ spécifique et rien n'a été extrait par regex
+    const pendingField = (conversation_state as any)?._pending_field as string | undefined;
+    const nothingExtracted = Object.keys(updates).length === 0;
+
+    if (pendingField && (nothingExtracted || !(updates as any)[pendingField])) {
+      const msg = lastMsg.trim();
+      // Ignorer les réponses trop courtes ou vides
+      if (msg.length >= 2) {
+        let fieldValue: string | null = null;
+
+        if (pendingField === 'full_name') {
+          fieldValue = extractNameFromReply(msg);
+        } else if (pendingField === 'reason') {
+          // Tout texte court = motif de consultation
+          if (msg.split(' ').length <= 15 && !/@/.test(msg)) fieldValue = msg;
+        } else if (pendingField === 'body_part') {
+          if (msg.split(' ').length <= 8) fieldValue = msg;
+        } else if (pendingField === 'pain_scale') {
+          const n = msg.match(/\b([0-9]|10)\b/);
+          if (n) fieldValue = n[1];
+        } else if (pendingField === 'accident_type') {
+          if (/travail|cnesst/i.test(msg)) fieldValue = 'CNESST';
+          else if (/voiture|route|saaq/i.test(msg)) fieldValue = 'SAAQ';
+          else if (/non|aucun|pas/i.test(msg)) fieldValue = 'none';
+        } else if (pendingField === 'claim_number') {
+          const nums = msg.match(/\d{5,}/);
+          if (nums) fieldValue = nums[0];
+          else if (/pas encore|pas de numéro|je n.ai pas/i.test(msg)) {
+            newState = applyUpdates(newState, { claim_number: { value: null, status: 'skipped' as const } });
+            (updates as any).claim_number = { value: null, status: 'skipped' };
+          }
+        }
+
+        if (fieldValue) {
+          const fieldUpdate = { [pendingField]: { value: fieldValue, status: 'confirmed' as const } };
+          newState = applyUpdates(newState, fieldUpdate as any);
+          Object.assign(updates, fieldUpdate);
         }
       }
     }
