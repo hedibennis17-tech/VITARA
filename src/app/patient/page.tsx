@@ -123,7 +123,7 @@ function buildVoiceAssignments(
 ): Record<string, SpeechSynthesisVoice | null> {
   const code = lang === 'ar' ? 'ar' : lang === 'en' ? 'en' : 'fr';
   const pool  = voices.filter(v => v.lang.toLowerCase().startsWith(code));
-  const src   = pool.length > 0 ? pool : voices;
+  const src   = pool.length > 0 ? pool : (Array.isArray(voices) ? voices : []);
 
   // Séparer par genre détecté
   const females  = src.filter(v => voiceGender(v) === 'female');
@@ -1251,7 +1251,7 @@ export default function PatientPage() {
 function ScreenRdv({ T, onBack, onBook, onNav }: any) {
   const [appts, setAppts] = useState<any[]>([]);
   useEffect(() => {
-    try { setAppts(JSON.parse(localStorage.getItem('vitara_appointments') || '[]')); } catch {}
+    try { const raw=JSON.parse(localStorage.getItem('vitara_appointments')||'[]'); setAppts(Array.isArray(raw)?raw:[]); } catch {}
   }, []);
   const STATUS: Record<string,[string,string]> = {
     confirmed: [T.mint,'Confirmé'], scheduled: [T.teal,'Planifié'], completed:['#34D399','Complété'],
@@ -1346,7 +1346,8 @@ function ScreenProfil({ T, onBack, onNav, theme, setTheme }: any) {
   useEffect(() => {
     try { const p = JSON.parse(localStorage.getItem('vitara_profile') || '{}'); if(p.name) setProfile(p); } catch {}
   }, []);
-  const appointments = (() => { try { return JSON.parse(localStorage.getItem('vitara_appointments') || '[]'); } catch { return []; } })();
+  const _apptRaw = (() => { try { const r=JSON.parse(localStorage.getItem('vitara_appointments') || '[]'); return Array.isArray(r)?r:[]; } catch { return []; } })();
+  const appointments = _apptRaw;
 
   return (
     <div style={{height:'100vh',background:T.bg,display:'flex',flexDirection:'column',maxWidth:420,margin:'0 auto',color:T.text,fontFamily:"'Inter',sans-serif"}}>
@@ -1371,8 +1372,8 @@ function ScreenProfil({ T, onBack, onNav, theme, setTheme }: any) {
         {/* Stats */}
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:16}}>
           {[
-            { label:'RDV pris', value: appointments.length, icon:'📅', color:T.teal },
-            { label:'Via VITARA AI', value: appointments.length, icon:'🤖', color:T.purple },
+            { label:'RDV pris', value: Array.isArray(appointments) ? appointments.length : 0, icon:'📅', color:T.teal },
+            { label:'Via VITARA AI', value: Array.isArray(appointments) ? appointments.length : 0, icon:'🤖', color:T.purple },
           ].map(s=>(
             <div key={s.label} style={{padding:'14px',background:T.s1,border:`1px solid ${T.border}`,borderRadius:12,textAlign:'center'}}>
               <div style={{fontSize:24,marginBottom:4}}>{s.icon}</div>
