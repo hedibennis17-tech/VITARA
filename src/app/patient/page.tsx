@@ -236,6 +236,7 @@ export default function PatientPage() {
   const synthRef   = useRef<SpeechSynthesis|null>(null);
   const sessionId  = useRef(`vitara-${Date.now()}-${Math.random().toString(36).slice(2,8)}`);
   const startTime  = useRef<number>(Date.now());
+  const greeted    = useRef(false);
   const histRef    = useRef(hist);
   const langRef    = useRef(lang);
   const agentRef   = useRef(agent);
