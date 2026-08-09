@@ -31,6 +31,15 @@ export interface VitaraState {
   // Accident
   accident_type:  Field;             // 'CNESST' | 'SAAQ' | 'IVAC' | 'none'
   claim_number:   Field;
+  // Enfant (pédiatrie)
+  child_name:     Field;
+  child_dob:      Field;
+  // Diagnostic pédiatrie
+  child_temp:     Field;   // température ex: "38.5°C"
+  child_breathing:Field;   // respiration
+  child_diarrhea: Field;   // diarrhée oui/non
+  child_vomiting: Field;   // vomissements
+  child_appearance:Field;  // apparence générale
   // RDV
   slot_date:      string | null;
   slot_time:      string | null;
@@ -42,6 +51,9 @@ export const EMPTY_STATE: VitaraState = {
   service:      F(), practitioner: F(),
   reason:       F(), body_part: F(), pain_scale: F(),
   accident_type:F(), claim_number: F(),
+  child_name:      F(), child_dob:       F(),
+  child_temp:      F(), child_breathing: F(), child_diarrhea:  F(),
+  child_vomiting:  F(), child_appearance:F(),
   slot_date: null, slot_time: null,
 };
 
@@ -298,6 +310,52 @@ export function nextStep(s: VitaraState): Step {
         en:`Any preferred physiotherapist? (${PHYSIO_LIST})`, ar:`هل تفضل معالجًا بعينه؟` };
   }
 
+  // ── PÉDIATRIE — champs enfant + diagnostic spécifique ─────────
+  if (s.service?.value === 'pediatrie') {
+    if (!ok(s.child_name))
+      return { type:'ask', field:'child_name',
+        fr:"Quel est le prénom et nom de votre enfant ?",
+        en:"What is your child's full name?", ar:"ما اسم طفلك الكامل؟" };
+
+    if (!ok(s.child_dob))
+      return { type:'ask', field:'child_dob',
+        fr:"Quelle est la date de naissance de votre enfant ?",
+        en:"What is your child's date of birth?", ar:"ما تاريخ ميلاد طفلك؟" };
+
+    if (!ok(s.reason))
+      return { type:'ask', field:'reason',
+        fr:`Pour quelle raison souhaitez-vous consulter pour ${s.child_name?.value?.split(' ')[0] || 'votre enfant'} aujourd'hui ?`,
+        en:"What is the reason for your child's consultation today?", ar:"ما سبب استشارة طفلك اليوم؟" };
+
+    if (!ok(s.child_temp))
+      return { type:'ask', field:'child_temp',
+        fr:`Est-ce que ${s.child_name?.value?.split(' ')[0] || 'votre enfant'} a de la fièvre ? Si oui, quelle est sa température ?`,
+        en:"Does your child have a fever? If yes, what is their temperature?", ar:"هل لدى طفلك حمى؟ ما درجة حرارته؟" };
+
+    if (!ok(s.child_breathing))
+      return { type:'ask', field:'child_breathing',
+        fr:`Comment respire ${s.child_name?.value?.split(' ')[0] || 'votre enfant'} ? Normalement, difficilement, rapidement ?`,
+        en:"How is your child breathing? Normally, with difficulty, rapidly?", ar:"كيف يتنفس طفلك؟" };
+
+    if (!ok(s.child_diarrhea))
+      return { type:'ask', field:'child_diarrhea',
+        fr:`Est-ce que ${s.child_name?.value?.split(' ')[0] || 'votre enfant'} a des diarrhées ou des selles anormales ?`,
+        en:"Does your child have diarrhea or abnormal stools?", ar:"هل لدى طفلك إسهال؟" };
+
+    if (!ok(s.child_vomiting))
+      return { type:'ask', field:'child_vomiting',
+        fr:`Y a-t-il des vomissements ? Depuis combien de temps ?`,
+        en:"Is there vomiting? For how long?", ar:"هل هناك قيء؟ منذ متى؟" };
+
+    if (!ok(s.child_appearance))
+      return { type:'ask', field:'child_appearance',
+        fr:`Comment est l'état général de ${s.child_name?.value?.split(' ')[0] || 'votre enfant'} ? Actif, somnolent, irritable ?`,
+        en:"How is your child's general appearance? Active, sleepy, irritable?", ar:"ما الحالة العامة لطفلك؟" };
+
+    // Tout le diagnostic pédiatrie est complet → créneaux
+    return { type:'slots' };
+  }
+
   // Motif
   if (!ok(s.reason))
     return { type:'ask', field:'reason',
@@ -384,25 +442,45 @@ export function extractNameFromReply(msg: string): string | null {
 // ── 5. ACK court après confirmation d'un champ ───────────────
 
 export function buildAck(field: keyof VitaraState, value: string, lang: string): string {
-  if (lang==='ar') return 'شكراً.';
+  if (lang==='ar') return 'شكراً جزيلاً.';
   if (lang==='en') {
     const m: Partial<Record<keyof VitaraState,string>> = {
-      full_name:`Thank you, ${value}.`, phone:'Got it.', email:'Email noted.',
-      ramq:'Health card noted.', service:'Got it.', practitioner:`${value} noted.`,
-      reason:'Understood.', body_part:'Noted.', pain_scale:`Pain ${value}/10 noted.`,
+      full_name:`Thank you very much, ${value.split(' ')[0]}!`, phone:'Perfect, phone number noted.',
+      email:'Thank you, email noted.', ramq:'Health card number noted, thank you.',
+      service:'Of course, I will help you with that.',
+      practitioner:`Noted, I will check availability for ${value}.`,
+      reason:"I understand, thank you for letting me know.", body_part:'Noted.',
+      pain_scale:`Understood, pain level ${value}/10 noted.`,
       accident_type:value==='CNESST'?'Work accident noted.':value==='SAAQ'?'Road accident noted.':'Noted.',
       claim_number:'File number noted.',
+      child_name:`Thank you. I have noted your child's name.`,
+      child_dob:'Date of birth noted, thank you.',
+      child_temp:`Temperature noted, thank you.`,
+      child_breathing:'Noted.', child_diarrhea:'Understood.', child_vomiting:'Noted.',
+      child_appearance:'Noted, thank you for these details.',
     };
-    return m[field] || 'Got it.';
+    return m[field] || 'Noted, thank you.';
   }
+  const fn = value.split(' ')[0];
   const m: Partial<Record<keyof VitaraState,string>> = {
-    full_name:`Merci, ${value.split(' ')[0]}.`, phone:'Numéro noté.', email:'Courriel noté.',
-    ramq:"Numéro d'assurance noté.", service:'Très bien.',
-    practitioner:`${value} noté.`,
-    reason:'Je comprends.', body_part:'Noté.',
-    pain_scale:`Douleur ${value}/10 notée.`,
-    accident_type:value==='CNESST'?'Accident de travail noté.':value==='SAAQ'?'Accident de route noté.':value==='none'?'Noté.':'Noté.',
-    claim_number:'Numéro de dossier noté.',
+    full_name:`Merci beaucoup, ${fn} !`,
+    phone:`Parfait, numéro de téléphone bien noté.`,
+    email:`Merci beaucoup, votre courriel est bien noté.`,
+    ramq:`Merci, votre numéro d'assurance maladie est bien enregistré.`,
+    service:`Bien sûr, je vais vous aider pour cela.`,
+    practitioner:`Noté, je vais vérifier les disponibilités de ${value}.`,
+    reason:`Je comprends, merci de me l'avoir indiqué.`,
+    body_part:`Merci, j'ai bien noté la zone concernée.`,
+    pain_scale:`Je suis désolée d'entendre cela. Douleur ${value}/10 notée.`,
+    accident_type:value==='CNESST'?'Accident de travail noté.':value==='SAAQ'?'Accident de route noté.':value==='none'?'Très bien.':'Noté.',
+    claim_number:`Merci, numéro de dossier bien enregistré.`,
+    child_name:`Merci beaucoup. J'ai bien noté le nom de votre enfant.`,
+    child_dob:`Date de naissance notée, merci.`,
+    child_temp:`Merci, j'ai bien noté la température.`,
+    child_breathing:`Merci pour cette précision.`,
+    child_diarrhea:`Merci, j'ai noté.`,
+    child_vomiting:`Je comprends, merci de me l'avoir indiqué.`,
+    child_appearance:`Merci beaucoup pour tous ces détails.`,
   };
-  return m[field] || 'Noté.';
+  return m[field] || 'Merci.';
 }

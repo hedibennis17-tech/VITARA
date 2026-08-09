@@ -116,6 +116,13 @@ export async function POST(req: NextRequest) {
         if      (pendingField==='full_name')    v = extractNameFromReply(msg);
         else if (pendingField==='reason'     && msg.split(' ').length<=15 && !/@/.test(msg)) v=msg;
         else if (pendingField==='body_part'  && msg.split(' ').length<=8)  v=msg;
+        else if (pendingField==='child_name' && msg.split(' ').length<=5 && !/\d{4,}/.test(msg)) v=msg;
+        else if (pendingField==='child_dob') { const d=msg.match(/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/) || msg.match(/\d{4}/); if(d) v=msg; else v=msg; }
+        else if (pendingField==='child_temp') v=msg;
+        else if (pendingField==='child_breathing') v=msg;
+        else if (pendingField==='child_diarrhea') v=msg;
+        else if (pendingField==='child_vomiting') v=msg;
+        else if (pendingField==='child_appearance') v=msg;
         else if (pendingField==='pain_scale') { const n=msg.match(/\b([0-9]|10)\b/); if(n) v=n[1]; }
         else if (pendingField==='accident_type') {
           if (/travail|cnesst/i.test(msg)) v='CNESST';
