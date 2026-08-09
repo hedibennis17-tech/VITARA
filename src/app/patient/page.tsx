@@ -417,7 +417,8 @@ export default function PatientPage() {
           max_tokens:         300,
           agent:              agentRef.current.id,
           gender:             agentRef.current.id === 'said' || agentRef.current.id === 'alain' ? 'male' : 'female',
-          conversation_state: convState.current,  // ← Envoyer l'état actuel
+          conversation_state: convState.current,
+          session_id:         sessionId.current,
         }),
       });
 
@@ -557,7 +558,9 @@ export default function PatientPage() {
       greeted.current = true;
       setMsgs([]); setHist([]); histRef.current = [];
       setBooking(null); setSlots(null); setSel(null);
-      convState.current = {}; // Reset Conversation Memory pour nouvelle session
+      convState.current = {};
+      sessionId.current = `vitara-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+      startTime.current = Date.now();
 
       // Genre de l'agent — said et alain = masculin, houda et hayet = féminin
       const isMale = a.id === 'said' || a.id === 'alain';
