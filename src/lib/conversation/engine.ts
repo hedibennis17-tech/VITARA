@@ -192,6 +192,46 @@ export function extractFromMessage(msg: string, state: VitaraState): Partial<Vit
     if (ps) up.pain_scale = F(ps[1], 'confirmed');
   }
 
+  // ── EXTRACTION CONTEXTUELLE (champs texte libre) ──────────
+  // Si RIEN extrait par regex → regarder l'état pour deviner le champ
+
+  const nothingYet = Object.keys(up).length === 0;
+
+  // Nom: si full_name inconnu ET rien extrait ET message ressemble à un nom
+  if (!ok(state.full_name) && nothingYet) {
+    const words = t.split(/\s+/).filter((w: string) => w.length > 1);
+    if (
+      words.length >= 1 && words.length <= 5 &&
+      !/\d{4,}/.test(t) &&
+      !/@/.test(t) &&
+      !/physio|m.decin|urgence|p.diatr|nutrit|ergo|psycho|cnesst|saaq/i.test(t) &&
+      !/^(oui|non|je|j |yes|no|okay|ok|bonjour|bonsoir|salut|merci|allo)/i.test(t)
+    ) {
+      const name = words.map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+      if (name.length >= 3) up.full_name = F(name, 'confirmed');
+    }
+  }
+
+  // Motif: si full_name+phone connus ET rien extrait ET message court
+  if (!ok(state.reason) && !up.reason && ok(state.full_name) && ok(state.phone)) {
+    const noOtherUpdate = !up.email && !up.ramq && !up.service && !up.practitioner && !up.phone;
+    if (noOtherUpdate && t.length >= 3 && t.split(/\s+/).length <= 20 && !/@/.test(t)) {
+      if (!/^(oui|non|ok|yes|no|allo)/i.test(t)) {
+        up.reason = F(t.charAt(0).toUpperCase() + t.slice(1), 'confirmed');
+      }
+    }
+  }
+
+  // Zone corporelle: si motif connu ET rien extrait ET message court
+  if (!ok(state.body_part) && !up.body_part && ok(state.reason)) {
+    const noOtherUpdate2 = !up.email && !up.ramq && !up.service && !up.practitioner && !up.phone && !up.reason;
+    if (noOtherUpdate2 && t.length >= 2 && t.split(/\s+/).length <= 8) {
+      if (!/^(oui|non|ok|yes|no|allo)/i.test(t) && !/\d{5,}/.test(t)) {
+        up.body_part = F(t.charAt(0).toUpperCase() + t.slice(1), 'confirmed');
+      }
+    }
+  }
+
   return up;
 }
 
