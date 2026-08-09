@@ -205,7 +205,8 @@ export function extractFromMessage(msg: string, state: VitaraState): Partial<Vit
       !/\d{4,}/.test(t) &&
       !/@/.test(t) &&
       !/physio|m.decin|urgence|p.diatr|nutrit|ergo|psycho|cnesst|saaq/i.test(t) &&
-      !/^(oui|non|je|j |yes|no|okay|ok|bonjour|bonsoir|salut|merci|allo)/i.test(t)
+      !/^(oui|non|je|j |yes|no|okay|ok|bonjour|bonsoir|salut|merci|allo)/i.test(t) &&
+      !/d.j.?\s+patient|nouveau\s+patient|d.j.\s+un\s+dossier|un\s+dossier|dossier\s+chez|existant/i.test(t)
     ) {
       const name = words.map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
       if (name.length >= 3) up.full_name = F(name, 'confirmed');
@@ -395,7 +396,7 @@ export function buildAck(field: keyof VitaraState, value: string, lang: string):
     return m[field] || 'Got it.';
   }
   const m: Partial<Record<keyof VitaraState,string>> = {
-    full_name:`Merci, ${value}.`, phone:'Numéro noté.', email:'Courriel noté.',
+    full_name:`Merci, ${value.split(' ')[0]}.`, phone:'Numéro noté.', email:'Courriel noté.',
     ramq:"Numéro d'assurance noté.", service:'Très bien.',
     practitioner:`${value} noté.`,
     reason:'Je comprends.', body_part:'Noté.',
