@@ -10,7 +10,7 @@ const PUB_API  = [
 const PUB_PAGE = [
   '/login', '/register',
   '/patient',        // App patient — toujours publique
-  '/patient-portal', // Portail patient — toujours public
+  '/patient-portal', '/diag', // Portail patient — toujours public
   '/_next', '/favicon',
 ];
 

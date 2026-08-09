@@ -538,7 +538,7 @@ export default function PatientPortal() {
     ...DEMO_APPOINTMENTS.filter(d => !aiAppointments.some((a: any) => a.code === d.code)),
   ];
 
-  const content: Record<Nav, JSX.Element> = {
+  const content: Record<Nav, React.ReactElement> = {
     accueil:    <Accueil onNav={setNav} appointments={APPOINTMENTS} newRdvCount={newRdvCount}/>,
     rdv:        <MesRdv appointments={APPOINTMENTS}/>,
     dossier:    <MonDossier/>,
