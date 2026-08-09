@@ -572,7 +572,7 @@ export default function PatientPage() {
       // Genre de l'agent — said et alain = masculin, houda et hayet = féminin
       const isMale = a.id === 'said' || a.id === 'alain';
       const g = l === 'fr'
-        ? `Bonjour ! Je suis ${a.name}, votre ${isMale ? 'assistant médical' : 'assistante médicale'}. Êtes-vous un nouveau patient ou avez-vous déjà un dossier chez nous ?`
+        ? `Bonjour et bienvenue à la Clinique Médicale JOLIBOURG de Laval ! Je suis ${a.name}, votre ${isMale ? 'assistant médical' : 'assistante médicale'}. Êtes-vous un nouveau patient ou avez-vous déjà un dossier chez nous ?`
         : l === 'en'
         ? `Hello! I'm ${a.name}, your medical assistant. Are you a new or existing patient?`
         : isMale

@@ -103,7 +103,16 @@ export async function POST(req: NextRequest) {
     const phoneNew = updates.phone?.status==='confirmed' && !state.phone?.value;
     if (phoneNew && newState.phone?.value) {
       const profile = await loadProfile(newState.phone.value);
-      if (Object.keys(profile).length>0) { newState=applyUpdates(newState,profile); newState={...newState,patient_type:'existing'}; }
+      if (Object.keys(profile).length>0) {
+        // Ne pas écraser les champs confirmés dans CE TOUR (ex: nom vient d'être donné)
+        const safe = Object.fromEntries(
+          Object.entries(profile).filter(([k]) => !(updates as any)[k]?.value)
+        );
+        if (Object.keys(safe).length>0) {
+          newState = applyUpdates(newState, safe as any);
+          newState = { ...newState, patient_type:'existing' };
+        }
+      }
     }
 
     // Extraction contextuelle

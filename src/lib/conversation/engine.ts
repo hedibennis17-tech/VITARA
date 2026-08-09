@@ -310,18 +310,41 @@ export function nextStep(s: VitaraState): Step {
         en:`Any preferred physiotherapist? (${PHYSIO_LIST})`, ar:`هل تفضل معالجًا بعينه؟` };
   }
 
-  // ── PÉDIATRIE — champs enfant + diagnostic spécifique ─────────
+  // ── PÉDIATRIE — enfant D'ABORD, parent ensuite ─────────────────
   if (s.service?.value === 'pediatrie') {
+    // 1. Infos enfant en premier
     if (!ok(s.child_name))
       return { type:'ask', field:'child_name',
-        fr:"Quel est le prénom et nom de votre enfant ?",
-        en:"What is your child's full name?", ar:"ما اسم طفلك الكامل؟" };
+        fr:"Pour commencer, quel est le prénom et nom complet de votre enfant ?",
+        en:"First, what is your child's full name?", ar:"أولاً، ما اسم طفلك الكامل؟" };
 
     if (!ok(s.child_dob))
       return { type:'ask', field:'child_dob',
-        fr:"Quelle est la date de naissance de votre enfant ?",
+        fr:`Quelle est la date de naissance de ${s.child_name?.value?.split(' ')[0] || 'votre enfant'} ?`,
         en:"What is your child's date of birth?", ar:"ما تاريخ ميلاد طفلك؟" };
 
+    // 2. Infos parent (tuteur)
+    if (!ok(s.full_name))
+      return { type:'ask', field:'full_name',
+        fr:`Merci. Et vous, quel est votre nom complet en tant que parent ou tuteur ?`,
+        en:"And what is your full name as parent or guardian?", ar:"وما اسمك الكامل كولي أمر؟" };
+
+    if (!ok(s.phone))
+      return { type:'ask', field:'phone',
+        fr:"Quel est votre numéro de téléphone ?",
+        en:"What is your phone number?", ar:"ما رقم هاتفك؟" };
+
+    if (!ok(s.email))
+      return { type:'ask', field:'email',
+        fr:"Quelle est votre adresse courriel ?",
+        en:"What is your email?", ar:"ما بريدك الإلكتروني؟" };
+
+    if (!ok(s.ramq))
+      return { type:'ask', field:'ramq',
+        fr:`Quel est le numéro de carte d'assurance maladie de ${s.child_name?.value?.split(' ')[0] || 'votre enfant'} ?`,
+        en:"What is your child's health card number?", ar:"ما رقم بطاقة التأمين الصحي للطفل؟" };
+
+    // 3. Raison de la visite
     if (!ok(s.reason))
       return { type:'ask', field:'reason',
         fr:`Pour quelle raison souhaitez-vous consulter pour ${s.child_name?.value?.split(' ')[0] || 'votre enfant'} aujourd'hui ?`,
