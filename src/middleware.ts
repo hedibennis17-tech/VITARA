@@ -5,7 +5,7 @@ import { verifyAccessToken, extractBearerToken } from '@/lib/auth/jwt';
 const PUB_API  = [
   '/api/auth/login', '/api/auth/register', '/api/auth/refresh',
   '/api/ai/chat', '/api/diagnostic', '/api/voice',
-  '/api/debug', '/api/workflow-debug', '/api/patients', '/api/db-setup', '/api/conversations', '/api/chat-debug',
+  '/api/debug', '/api/workflow-debug', '/api/patients', '/api/db-setup', '/api/conversations', '/api/chat-debug', '/api/status',
 ];
 const PUB_PAGE = [
   '/login', '/register',
