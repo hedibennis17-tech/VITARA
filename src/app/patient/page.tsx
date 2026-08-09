@@ -236,8 +236,15 @@ export default function PatientPage() {
   const synthRef   = useRef<SpeechSynthesis|null>(null);
   const sessionId  = useRef(`vitara-${Date.now()}-${Math.random().toString(36).slice(2,8)}`);
   const startTime  = useRef<number>(Date.now());
+  const histRef    = useRef(hist);
+  const langRef    = useRef(lang);
+  const agentRef   = useRef(agent);
+  const voiceMap   = useRef<Record<string, SpeechSynthesisVoice | null>>({});
+  const convState  = useRef<Record<string,any>>({});
+  const skipDisplay = useRef(false); // évite double affichage msg patient (startSession + sendMsg)
 
   // Sauvegarder la conversation dans la DB (fire & forget)
+  // Déclaré APRÈS tous les refs pour éviter les erreurs de référence
   const saveConversation = useCallback((status: 'completed'|'abandoned', bookingCode?: string, bookingDate?: string) => {
     const st = convState.current as any;
     const duration = Math.round((Date.now() - startTime.current) / 1000);
@@ -264,14 +271,8 @@ export default function PatientPage() {
         booking_date:  bookingDate || null,
         duration_sec:  duration,
       }),
-    }).catch(() => {}); // fire & forget
+    }).catch(() => {});
   }, [msgs]);
-  const histRef    = useRef(hist);
-  const langRef    = useRef(lang);
-  const agentRef   = useRef(agent);
-  const voiceMap   = useRef<Record<string, SpeechSynthesisVoice | null>>({});
-  const convState  = useRef<Record<string,any>>({});
-  const skipDisplay = useRef(false); // évite double affichage msg patient (startSession + sendMsg)
 
   useEffect(() => {
     const s = document.createElement('style');
