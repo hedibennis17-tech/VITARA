@@ -312,6 +312,34 @@ export function buildSlots(s: VitaraState): any[] {
   ];
 }
 
+// ── 4b. Extraction contextuelle du nom ───────────────────────
+// Appelé quand la question précédente était "full_name"
+// et que le patient a répondu avec un texte qui n'est pas un autre champ
+export function extractNameFromReply(msg: string): string | null {
+  const t = msg.trim();
+  
+  // Ignorer si c'est un numéro de téléphone
+  if (/^\d[\d\s\-().]{8,}$/.test(t)) return null;
+  // Ignorer si c'est un email
+  if (/@/.test(t)) return null;
+  // Ignorer si c'est un RAMQ
+  if (/^[A-Za-z]{4}\d{8}/.test(t.replace(/\s/,''))) return null;
+  // Ignorer si c'est un service
+  if (/physio|médecin|urgence|pédiatr|nutrit|ergo|psycho/i.test(t)) return null;
+  // Ignorer si trop long (> 5 mots = probablement une phrase)
+  const words = t.split(/\s+/).filter(w => w.length > 0);
+  if (words.length > 5) return null;
+  // Ignorer si commence par "oui", "non", "je", etc.
+  if (/^(oui|non|je|j'|yes|no|okay|ok|peut)/i.test(t)) return null;
+  
+  // Capitaliser chaque mot
+  const name = words
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+  
+  return name.length >= 2 ? name : null;
+}
+
 // ── 5. ACK court après confirmation d'un champ ───────────────
 
 export function buildAck(field: keyof VitaraState, value: string, lang: string): string {

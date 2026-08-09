@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   VitaraState, EMPTY_STATE, extractFromMessage, applyUpdates,
-  nextStep, buildSlots, buildAck,
+  nextStep, buildSlots, buildAck, extractNameFromReply,
 } from '@/lib/conversation/engine';
 
 export const maxDuration = 30;
@@ -92,6 +92,19 @@ export async function POST(req: NextRequest) {
         newState = applyUpdates(newState, profile);
         // Marquer que le patient est existant
         newState = { ...newState, patient_type: 'existing' };
+      }
+    }
+
+    // ── Extraction contextuelle du nom ─────────────────────────
+    // Si la dernière question était "full_name" et pas encore confirmé → tenter extraction
+    if (!newState.full_name?.value && !newState.full_name?.status?.includes('confirmed')) {
+      const pendingField = (conversation_state as any)?._pending_field;
+      if (pendingField === 'full_name' || !Object.keys(updates).length) {
+        const extractedName = extractNameFromReply(lastMsg);
+        if (extractedName) {
+          newState = applyUpdates(newState, { full_name: { value: extractedName, status: 'confirmed' as const } });
+          if (!updates.full_name) (updates as any).full_name = { value: extractedName, status: 'confirmed' };
+        }
       }
     }
 

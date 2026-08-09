@@ -439,6 +439,10 @@ export default function PatientPage() {
       // L'API retourne aussi conversation_state mis à jour côté serveur
       if (data.conversation_state && typeof data.conversation_state === 'object') {
         convState.current = { ...convState.current, ...data.conversation_state };
+        // Mémoriser quel champ a été demandé pour l'extraction contextuelle (ex: nom)
+        if (data._pending_field) {
+          (convState.current as any)._pending_field = data._pending_field;
+        }
       }
 
       if (data.code === 'NO_API_KEY') {
