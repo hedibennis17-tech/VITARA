@@ -13,6 +13,7 @@ const NAV = [
   { label: 'Centre d\'appel', href: '/centre-appel', icon: Phone, badge: 3 },
   { label: 'Patients', href: '/patients', icon: Users },
   { label: 'Agenda', href: '/agenda', icon: Calendar },
+  { label: "Centre d'appel", href: '/centre-appel', icon: Phone },
   { label: 'Personnel', href: '/personnel', icon: Stethoscope },
   { label: 'Facturation', href: '/facturation', icon: Receipt },
   { label: 'Rapports', href: '/rapports', icon: BarChart3 },

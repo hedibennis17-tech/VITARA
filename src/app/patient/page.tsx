@@ -234,7 +234,38 @@ export default function PatientPage() {
   const recorderRef= useRef<MediaRecorder|null>(null);
   const chunksRef  = useRef<Blob[]>([]);
   const synthRef   = useRef<SpeechSynthesis|null>(null);
-  const greeted    = useRef(false);
+  const sessionId  = useRef(`vitara-${Date.now()}-${Math.random().toString(36).slice(2,8)}`);
+  const startTime  = useRef<number>(Date.now());
+
+  // Sauvegarder la conversation dans la DB (fire & forget)
+  const saveConversation = useCallback((status: 'completed'|'abandoned', bookingCode?: string, bookingDate?: string) => {
+    const st = convState.current as any;
+    const duration = Math.round((Date.now() - startTime.current) / 1000);
+    fetch('/api/conversations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id:    sessionId.current,
+        agent_id:      agentRef.current.id,
+        agent_name:    agentRef.current.name,
+        patient_phone: st.phone?.value || '',
+        patient_name:  st.full_name?.value || '',
+        service:       st.service?.value || '',
+        practitioner:  st.practitioner?.value || '',
+        reason:        st.reason?.value || '',
+        body_part:     st.body_part?.value || '',
+        accident_type: st.accident_type?.value || '',
+        claim_number:  st.claim_number?.value || '',
+        pain_scale:    st.pain_scale?.value || '',
+        language:      langRef.current,
+        status,
+        transcript:    msgs.map(m => ({ role: m.role, text: m.text })),
+        booking_code:  bookingCode || null,
+        booking_date:  bookingDate || null,
+        duration_sec:  duration,
+      }),
+    }).catch(() => {}); // fire & forget
+  }, [msgs]);
   const histRef    = useRef(hist);
   const langRef    = useRef(lang);
   const agentRef   = useRef(agent);
@@ -590,6 +621,7 @@ export default function PatientPage() {
     };
 
     setBooking(localBooking);
+    saveConversation('completed', code, s.label);
     // Sauvegarder dans localStorage
     try {
       const saved = JSON.parse(localStorage.getItem('vitara_appointments') || '[]');
