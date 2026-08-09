@@ -1,41 +1,75 @@
-// ── VITARA Chat API v6.0 — Guided Completion Architecture ─────
-// Le serveur décide QUOI demander. Groq dit juste COMMENT le dire.
+// ── VITARA Chat v7.0 — Server-Driven, Zero Groq Improvisation ─
 import { NextRequest, NextResponse } from 'next/server';
-import { buildSystemPrompt } from '@/lib/knowledge/rag';
 import { ConversationState, mergeState, INITIAL_STATE } from '@/lib/conversation/state';
 import { extractEntities, entitiesToStateUpdate } from '@/lib/conversation/extractor';
 import { getNextAction } from '@/lib/conversation/next-question';
 
 export const maxDuration = 30;
 const MODEL = 'llama-3.1-8b-instant';
-const FALLBACK = 'llama-3.3-70b-versatile';
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 function retryMs(msg: string): number {
-  const m = msg.match(/in (\d+)m(\d+\.?\d*)s/);
   const s = msg.match(/in (\d+\.?\d*)s/);
+  const m = msg.match(/in (\d+)m(\d+\.?\d*)s/);
   if (m) return (parseInt(m[1])*60+parseFloat(m[2]))*1000;
   if (s) return parseFloat(s[1])*1000;
   return 5000;
 }
 
-// Générer les 3 créneaux selon le praticien et le service
+// Générer les créneaux selon le praticien confirmé
 function generateSlots(state: any): any[] {
-  const provider  = state.requested_practitioner?.value || state.requested_practitioner || 'Dr. Fahd Awada';
-  const service   = state.requested_service?.value || '';
-  const duration  = service.includes('physio') ? '30 min' : '20 min';
-  const dept      = service.includes('physio') ? 'Physiothérapie'
-                  : service.includes('pediatr') ? 'Pédiatrie'
-                  : 'Médecine familiale';
-  const today = new Date();
+  const provider = state.requested_practitioner?.value || 'Dr. Fahd Awada';
+  const service  = state.requested_service?.value || '';
+  const duration = service.includes('physio') ? '30 min' : '20 min';
+  const dept     = service.includes('physio') ? 'Physiothérapie'
+                 : service.includes('pediatr') ? 'Pédiatrie'
+                 : 'Médecine familiale';
+  const today    = new Date();
   const tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
-  const d2 = new Date(today); d2.setDate(today.getDate()+2);
   const fmt = (d: Date) => d.toLocaleDateString('fr-CA',{weekday:'long',day:'numeric',month:'long'});
   return [
     { id:'1', label:`${fmt(today)} à 14h00`,   provider, dept, duration, date:today.toISOString().slice(0,10),    time:'14:00' },
     { id:'2', label:`${fmt(today)} à 16h30`,   provider, dept, duration, date:today.toISOString().slice(0,10),    time:'16:30' },
     { id:'3', label:`${fmt(tomorrow)} à 9h00`, provider, dept, duration, date:tomorrow.toISOString().slice(0,10), time:'09:00' },
   ];
+}
+
+// Accusé de réception court selon le champ qu'on vient de collecter
+function getAck(field: string | undefined, value: string, lang: string): string {
+  if (lang === 'ar') return 'شكراً.';
+  if (lang === 'en') {
+    const map: Record<string,string> = {
+      full_name: `Thank you, ${value}.`,
+      phone: 'Phone number noted.',
+      email: 'Email noted.',
+      ramq_number: 'Health card noted.',
+      requested_service: 'Understood.',
+      requested_practitioner: `Dr. ${value.replace(/dr\.?\s*/i,'')} noted.`,
+      reason: 'Understood.',
+      body_part: 'Noted.',
+      urgency_level: `Pain level ${value}/10 noted.`,
+      accident_type: 'Noted.',
+      cnesst_claim_number: 'CNESST number noted.',
+      saaq_claim_number: 'SAAQ number noted.',
+    };
+    return map[field||''] || 'Understood.';
+  }
+  // FR
+  const map: Record<string,string> = {
+    full_name:              `Merci, ${value}.`,
+    phone:                  'Numéro noté.',
+    email:                  'Courriel noté.',
+    ramq_number:            'Numéro d\'assurance noté.',
+    requested_service:      'Très bien.',
+    requested_practitioner: `Dr. ${value.replace(/dr\.?\s*/i,'')} noté.`,
+    reason:                 'Je comprends.',
+    body_part:              'Noté.',
+    urgency_level:          `Douleur ${value}/10 notée.`,
+    accident_type:          value === 'CNESST' ? 'Dossier CNESST noté.' : value === 'SAAQ' ? 'Dossier SAAQ noté.' : 'Noté.',
+    cnesst_claim_number:    'Numéro CNESST noté.',
+    saaq_claim_number:      'Numéro SAAQ noté.',
+  };
+  return map[field||''] || 'Noté.';
 }
 
 export async function POST(req: NextRequest) {
@@ -46,14 +80,13 @@ export async function POST(req: NextRequest) {
     const body = await req.json() as {
       messages:           { role:string; content:string }[];
       language?:          string;
-      max_tokens?:        number;
       agent?:             string;
       gender?:            'female'|'male';
       conversation_state?: Partial<ConversationState>;
     };
     const { messages, language='fr', agent='houda', gender='female', conversation_state } = body;
 
-    // ── 1. État initial + extraction déterministe ──────────────
+    // ── 1. Reconstruire + mettre à jour l'état via extraction regex ─
     let state: ConversationState = conversation_state
       ? mergeState(INITIAL_STATE, conversation_state as ConversationState)
       : { ...INITIAL_STATE };
@@ -61,78 +94,58 @@ export async function POST(req: NextRequest) {
     const lastUser = [...messages].reverse().find(m => m.role==='user')?.content || '';
     const extracted   = extractEntities(lastUser, state as any);
     const stateUpdate = entitiesToStateUpdate(extracted);
+    const justConfirmed = Object.keys(stateUpdate)[0]; // premier champ qu'on vient d'extraire
+    const justConfirmedVal = (stateUpdate as any)[justConfirmed]?.value || '';
+
     if (Object.keys(stateUpdate).length > 0) {
       state = mergeState(state, stateUpdate as Partial<ConversationState>);
     }
 
-    // ── 2. Next Best Action (déterministe — PAS Groq) ──────────
+    // ── 2. Déterminer la prochaine action (déterministe) ───────────
     const nextAction = getNextAction(state as any, language);
 
-    // Si on a tout → retourner les créneaux directement
+    // ── 3. Si tout collecté → créneaux directs (sans Groq) ────────
     if (nextAction.type === 'slots') {
       const slots = generateSlots(state);
+      const prov  = slots[0].provider;
       const speak = language === 'ar'
-        ? `إليك 3 مواعيد متاحة مع ${slots[0].provider}. أيها يناسبك؟`
+        ? `إليك 3 مواعيد متاحة مع ${prov}. أيها يناسبك؟`
         : language === 'en'
-        ? `Here are 3 available slots with ${slots[0].provider}. Which works for you?`
-        : `Voici 3 créneaux disponibles avec ${slots[0].provider}. Lequel vous convient ?`;
+        ? `Here are 3 available slots with ${prov}. Which works for you?`
+        : `Voici 3 créneaux disponibles avec ${prov}. Lequel vous convient ?`;
       return NextResponse.json({
-        content: [{ type:'text', text: JSON.stringify({ speak, intent:'slots', state:{}, slots, booking:null }) }],
-        conversation_state: state,
-        model: 'local',
+        content: [{type:'text', text: JSON.stringify({speak, intent:'slots', state:{}, slots, booking:null})}],
+        conversation_state: state, model:'local',
       });
     }
 
-    // ── 3. Prompt "guided" — Groq ne fait que reformuler ──────
-    const nextQ = nextAction[`question${language==='en'?'_en':language==='ar'?'_ar':''}`]
-                || nextAction.question || '';
+    // ── 4. Construire la question suivante (côté serveur) ──────────
+    const nextQ   = nextAction[language==='en' ? 'question_en' : language==='ar' ? 'question_ar' : 'question'] || nextAction.question || '';
+    const ack     = justConfirmed ? getAck(justConfirmed, justConfirmedVal, language) : '';
+    const finalQ  = [ack, nextQ].filter(Boolean).join(' ');
 
+    // ── 5. Appel Groq UNIQUEMENT pour rendre la phrase naturelle ───
+    //    Groq reçoit le texte final et peut juste le rendre plus chaleureux
+    //    S'il dévie, on utilise finalQ directement (fallback garanti)
     const name   = agent.charAt(0).toUpperCase() + agent.slice(1);
     const isMale = gender === 'male';
-    const adj    = isMale ? 'assistant médical' : 'assistante médicale';
+    const systemPrompt = `Tu es ${name}, ${isMale?'assistant médical':'assistante médicale'} à la Clinique JOLIBOURG Laval.
+Réponds en JSON: {"speak":"...","intent":"intake","state":{},"slots":null,"booking":null}
+Le message à transmettre est: "${finalQ}"
+Rends-le légèrement plus naturel/chaleureux si possible, mais NE CHANGE PAS le sens ni n'ajoute de question.
+IMPORTANT: parle en ${gender==='male'?'MASCULIN':'FÉMININ'}. Genre: ${isMale?'assistant, prêt':'assistante, prête'}.`;
 
-    // Résumé de l'état confirmé
-    const stateLines = Object.entries(state as any)
-      .filter(([k,v]: [string,any]) => {
-        if (typeof v === 'string') return !!v;
-        return v?.value && v.status !== 'UNKNOWN';
-      })
-      .map(([k,v]: [string,any]) => {
-        const val = typeof v === 'string' ? v : v.value;
-        const status = typeof v === 'string' ? 'CONFIRMED' : v.status;
-        return `  ${k}: "${val}" [${status}]`;
-      }).join('\n') || '  (début de conversation)';
-
-    const guidedPrompt = `Tu es ${name}, ${adj} à la Clinique Médicale JOLIBOURG de Laval.
-Genre: ${isMale?'MASCULIN':'FÉMININ'}
-
-CONTEXTE CONFIRMÉ (ne JAMAIS redemander ces champs):
-${stateLines}
-
-MESSAGE PATIENT: "${lastUser}"
-
-INSTRUCTION OBLIGATOIRE: Tu dois poser EXACTEMENT cette question, reformulée naturellement:
-"${nextQ}"
-
-RÈGLES:
-- Réponds en JSON pur UNIQUEMENT
-- Commence par un accusé de réception bref de ce que le patient vient de dire
-- Enchaîne avec la question indiquée
-- Si la question est sur un champ déjà dans le CONTEXTE CONFIRMÉ → ne la pose pas, passe à la suivante
-- Format: {"speak":"accusé + question","intent":"intake","state":{},"slots":null,"booking":null}`;
-
-    // ── 4. Appel Groq (juste pour reformuler naturellement) ────
-    const trimmed = messages.slice(-6);
+    const trimmed = messages.slice(-4);
     const safeMsg = trimmed[0]?.role !== 'user' ? trimmed.slice(1) : trimmed;
 
     async function callGroq(model: string) {
       return fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`},
         body: JSON.stringify({
-          model, max_tokens: 200, temperature: 0.4,
-          response_format: { type: 'json_object' },
-          messages: [{ role:'system', content: guidedPrompt }, ...safeMsg],
+          model, max_tokens:120, temperature:0.3,
+          response_format:{type:'json_object'},
+          messages:[{role:'system',content:systemPrompt},...safeMsg],
         }),
       });
     }
@@ -140,34 +153,30 @@ RÈGLES:
     let res  = await callGroq(MODEL);
     let data = await res.json() as any;
 
-    if (res.status === 429 && data.error?.message?.includes('per minute')) {
+    // TPM retry
+    if (res.status===429 && data.error?.message?.includes('per minute')) {
       const w = retryMs(data.error.message);
-      if (w <= 12000) { await sleep(w+500); res = await callGroq(MODEL); data = await res.json() as any; }
+      if (w<=12000) { await sleep(w+500); res=await callGroq(MODEL); data=await res.json() as any; }
     }
-    if (res.status === 429 && data.error?.message?.includes('per day')) {
-      res = await callGroq(FALLBACK); data = await res.json() as any;
-      if (res.status === 429) {
-        const fb = `{"speak":"Limite atteinte. Rappellez-nous au (514) 555-0100.","intent":"error","state":{},"slots":null,"booking":null}`;
-        return NextResponse.json({ content:[{type:'text',text:fb}], rate_limit:true });
-      }
+    // TPD fallback
+    if (res.status===429 && data.error?.message?.includes('per day')) {
+      res=await callGroq('llama-3.3-70b-versatile'); data=await res.json() as any;
     }
 
-    // Fallback: si Groq échoue, utiliser la question directe
-    let text: string;
-    if (!res.ok || !data.choices?.[0]?.message?.content) {
-      text = JSON.stringify({ speak: nextQ, intent:'intake', state:{}, slots:null, booking:null });
-    } else {
-      text = data.choices[0].message.content;
-      // Vérifier que Groq n'a pas inventé sa propre question différente
+    // Construire la réponse finale — TOUJOURS avec fallback garanti
+    let speak = finalQ;
+    if (res.ok && data.choices?.[0]?.message?.content) {
       try {
-        const parsed = JSON.parse(text);
-        if (!parsed.speak) parsed.speak = nextQ;
-        text = JSON.stringify(parsed);
-      } catch { text = JSON.stringify({ speak: nextQ, intent:'intake', state:{}, slots:null, booking:null }); }
+        const parsed = JSON.parse(data.choices[0].message.content);
+        // Vérifier que Groq n'a pas inventé autre chose
+        if (parsed.speak && parsed.speak.length < 300) speak = parsed.speak;
+      } catch { /* garder finalQ */ }
     }
+
+    const responseText = JSON.stringify({speak, intent:'intake', state:{}, slots:null, booking:null});
 
     return NextResponse.json({
-      content: [{ type:'text', text }],
+      content: [{type:'text', text: responseText}],
       model: MODEL,
       conversation_state: state,
       next_field: nextAction.field,
@@ -176,6 +185,6 @@ RÈGLES:
 
   } catch (err) {
     const fb = '{"speak":"Erreur réseau. Veuillez réessayer.","intent":"error","state":{},"slots":null,"booking":null}';
-    return NextResponse.json({ content:[{type:'text',text:fb}], code:'SERVER_ERROR' });
+    return NextResponse.json({content:[{type:'text',text:fb}], code:'SERVER_ERROR'});
   }
 }
