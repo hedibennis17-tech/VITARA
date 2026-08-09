@@ -143,13 +143,28 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Bottom info */}
+      {/* Bottom info + Déconnexion */}
       <div style={{
         padding: '16px 20px',
         borderTop: '1px solid var(--border)',
         fontSize: 11,
         color: 'var(--text-dim)',
       }}>
+        <button
+          onClick={async () => {
+            await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+            window.location.href = '/login';
+          }}
+          style={{
+            width: '100%', marginBottom: 12, padding: '8px 12px',
+            background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+            borderRadius: 8, color: '#EF4444', fontSize: 12, fontWeight: 600,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Déconnexion
+        </button>
         <div style={{ marginBottom: 2, fontWeight: 500 }}>v1.0.0-alpha</div>
         <div>Clinique Médicale JOLIBOURG de Laval</div>
       </div>
