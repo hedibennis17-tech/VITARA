@@ -269,7 +269,14 @@ const GMF_LIST = Object.values(GMF_LOOKUP).filter((v,i,a)=>a.indexOf(v)===i).joi
 const PHYSIO_LIST = Object.values(PHYSIO_LOOKUP).filter((v,i,a)=>a.indexOf(v)===i).join(' · ');
 
 export function nextStep(s: VitaraState): Step {
-  // Identité
+  // ── PÉDIATRIE EN PREMIER (si service déjà détecté) ────────────
+  // Quand le patient dit "Mon enfant a besoin..." → service=pediatrie
+  // → demander l'enfant AVANT le parent
+  if (s.service?.value === 'pediatrie') {
+    return nextStepPediatrie(s);
+  }
+
+  // Identité (tous autres services)
   if (!ok(s.full_name))
     return { type:'ask', field:'full_name',
       fr:'Pouvez-vous me confirmer votre nom complet ?',
@@ -310,108 +317,64 @@ export function nextStep(s: VitaraState): Step {
         en:`Any preferred physiotherapist? (${PHYSIO_LIST})`, ar:`هل تفضل معالجًا بعينه؟` };
   }
 
-  // ── PÉDIATRIE — enfant D'ABORD, parent ensuite ─────────────────
-  if (s.service?.value === 'pediatrie') {
-    // 1. Infos enfant en premier
-    if (!ok(s.child_name))
-      return { type:'ask', field:'child_name',
-        fr:"Pour commencer, quel est le prénom et nom complet de votre enfant ?",
-        en:"First, what is your child's full name?", ar:"أولاً، ما اسم طفلك الكامل؟" };
+  // ── (pédiatrie géré en haut de nextStep) ────────────────────────
 
-    if (!ok(s.child_dob))
-      return { type:'ask', field:'child_dob',
-        fr:`Quelle est la date de naissance de ${s.child_name?.value?.split(' ')[0] || 'votre enfant'} ?`,
-        en:"What is your child's date of birth?", ar:"ما تاريخ ميلاد طفلك؟" };
+}
 
-    // 2. Infos parent (tuteur)
-    if (!ok(s.full_name))
-      return { type:'ask', field:'full_name',
-        fr:`Merci. Et vous, quel est votre nom complet en tant que parent ou tuteur ?`,
-        en:"And what is your full name as parent or guardian?", ar:"وما اسمك الكامل كولي أمر؟" };
-
-    if (!ok(s.phone))
-      return { type:'ask', field:'phone',
-        fr:"Quel est votre numéro de téléphone ?",
-        en:"What is your phone number?", ar:"ما رقم هاتفك؟" };
-
-    if (!ok(s.email))
-      return { type:'ask', field:'email',
-        fr:"Quelle est votre adresse courriel ?",
-        en:"What is your email?", ar:"ما بريدك الإلكتروني؟" };
-
-    if (!ok(s.ramq))
-      return { type:'ask', field:'ramq',
-        fr:`Quel est le numéro de carte d'assurance maladie de ${s.child_name?.value?.split(' ')[0] || 'votre enfant'} ?`,
-        en:"What is your child's health card number?", ar:"ما رقم بطاقة التأمين الصحي للطفل؟" };
-
-    // 3. Raison de la visite
-    if (!ok(s.reason))
-      return { type:'ask', field:'reason',
-        fr:`Pour quelle raison souhaitez-vous consulter pour ${s.child_name?.value?.split(' ')[0] || 'votre enfant'} aujourd'hui ?`,
-        en:"What is the reason for your child's consultation today?", ar:"ما سبب استشارة طفلك اليوم؟" };
-
-    if (!ok(s.child_temp))
-      return { type:'ask', field:'child_temp',
-        fr:`Est-ce que ${s.child_name?.value?.split(' ')[0] || 'votre enfant'} a de la fièvre ? Si oui, quelle est sa température ?`,
-        en:"Does your child have a fever? If yes, what is their temperature?", ar:"هل لدى طفلك حمى؟ ما درجة حرارته؟" };
-
-    if (!ok(s.child_breathing))
-      return { type:'ask', field:'child_breathing',
-        fr:`Comment respire ${s.child_name?.value?.split(' ')[0] || 'votre enfant'} ? Normalement, difficilement, rapidement ?`,
-        en:"How is your child breathing? Normally, with difficulty, rapidly?", ar:"كيف يتنفس طفلك؟" };
-
-    if (!ok(s.child_diarrhea))
-      return { type:'ask', field:'child_diarrhea',
-        fr:`Est-ce que ${s.child_name?.value?.split(' ')[0] || 'votre enfant'} a des diarrhées ou des selles anormales ?`,
-        en:"Does your child have diarrhea or abnormal stools?", ar:"هل لدى طفلك إسهال؟" };
-
-    if (!ok(s.child_vomiting))
-      return { type:'ask', field:'child_vomiting',
-        fr:`Y a-t-il des vomissements ? Depuis combien de temps ?`,
-        en:"Is there vomiting? For how long?", ar:"هل هناك قيء؟ منذ متى؟" };
-
-    if (!ok(s.child_appearance))
-      return { type:'ask', field:'child_appearance',
-        fr:`Comment est l'état général de ${s.child_name?.value?.split(' ')[0] || 'votre enfant'} ? Actif, somnolent, irritable ?`,
-        en:"How is your child's general appearance? Active, sleepy, irritable?", ar:"ما الحالة العامة لطفلك؟" };
-
-    // Tout le diagnostic pédiatrie est complet → créneaux
-    return { type:'slots' };
-  }
-
-  // Motif
+// Fonction dédiée pédiatrie — appelée en priorité
+function nextStepPediatrie(s: VitaraState): Step {
+  const prenom = s.child_name?.value?.split(' ')[0] || "votre enfant";
+  // 1. Infos enfant
+  if (!ok(s.child_name))
+    return { type:'ask', field:'child_name',
+      fr:"Pour commencer, quel est le prénom et nom complet de votre enfant ?",
+      en:"First, what is your child's full name?", ar:"ما اسم طفلك الكامل؟" };
+  if (!ok(s.child_dob))
+    return { type:'ask', field:'child_dob',
+      fr:`Quelle est la date de naissance de ${prenom} ?`,
+      en:"What is your child's date of birth?", ar:"ما تاريخ ميلاد طفلك؟" };
+  // 2. Infos parent
+  if (!ok(s.full_name))
+    return { type:'ask', field:'full_name',
+      fr:"Merci. Et vous, quel est votre nom complet en tant que parent ou tuteur ?",
+      en:"And what is your full name as parent or guardian?", ar:"وما اسمك الكامل كولي أمر؟" };
+  if (!ok(s.phone))
+    return { type:'ask', field:'phone',
+      fr:"Quel est votre numéro de téléphone ?",
+      en:"What is your phone number?", ar:"ما رقم هاتفك؟" };
+  if (!ok(s.email))
+    return { type:'ask', field:'email',
+      fr:"Quelle est votre adresse courriel ?",
+      en:"What is your email?", ar:"ما بريدك الإلكتروني؟" };
+  if (!ok(s.ramq))
+    return { type:'ask', field:'ramq',
+      fr:`Quel est le numéro de carte d'assurance maladie de ${prenom} ?`,
+      en:"What is your child's health card number?", ar:"ما رقم بطاقة التأمين الصحي للطفل؟" };
+  // 3. Motif et diagnostic
   if (!ok(s.reason))
     return { type:'ask', field:'reason',
-      fr:'Pour quel motif consultez-vous ?',
-      en:"What's the reason for your consultation?", ar:'ما سبب استشارتك؟' };
-
-  // Zone corporelle
-  if (!ok(s.body_part))
-    return { type:'ask', field:'body_part',
-      fr:'Où ressentez-vous exactement le problème ?',
-      en:'Where exactly is the problem?', ar:'أين المشكلة بالضبط؟' };
-
-  // Intensité
-  if (!ok(s.pain_scale))
-    return { type:'ask', field:'pain_scale',
-      fr:"Sur une échelle de 0 à 10, quelle est l'intensité de la douleur ?",
-      en:'On a scale of 0-10, how intense is the pain?', ar:'على مقياس 0-10، ما شدة الألم؟' };
-
-  // Accident (seulement si physio ou motif suggère accident)
-  const needsAccident = svc === 'physiotherapie' ||
-    /chute|blessure|accident|travail|trauma/i.test(s.reason.value || '');
-  if (needsAccident && !ok(s.accident_type) && !skip(s.accident_type))
-    return { type:'ask', field:'accident_type',
-      fr:'Est-ce lié à un accident de travail (CNESST) ou de la route (SAAQ) ?',
-      en:'Is this related to a work accident (CNESST) or road accident (SAAQ)?', ar:'هل مرتبط بحادث عمل أو طريق؟' };
-
-  // Numéro dossier (skippable)
-  const acc = s.accident_type.value;
-  if ((acc==='CNESST'||acc==='SAAQ') && !ok(s.claim_number) && !skip(s.claim_number))
-    return { type:'ask', field:'claim_number',
-      fr:`Avez-vous un numéro de dossier ${acc} ? (dites "pas encore" si vous ne l'avez pas)`,
-      en:`Do you have a ${acc} file number? (say "not yet" if not)`, ar:`هل لديك رقم ملف ${acc}؟` };
-
+      fr:`Pour quelle raison consultez-vous pour ${prenom} aujourd'hui ?`,
+      en:"What is the reason for the consultation?", ar:"ما سبب الاستشارة؟" };
+  if (!ok(s.child_temp))
+    return { type:'ask', field:'child_temp',
+      fr:`Est-ce que ${prenom} a de la fièvre ? Si oui, quelle est sa température ?`,
+      en:"Does your child have a fever? What is their temperature?", ar:"هل لدى طفلك حمى؟" };
+  if (!ok(s.child_breathing))
+    return { type:'ask', field:'child_breathing',
+      fr:`Comment respire ${prenom} ? Normalement, difficilement, rapidement ?`,
+      en:"How is your child breathing?", ar:"كيف يتنفس طفلك؟" };
+  if (!ok(s.child_diarrhea))
+    return { type:'ask', field:'child_diarrhea',
+      fr:`Est-ce que ${prenom} a des diarrhées ou des selles anormales ?`,
+      en:"Does your child have diarrhea?", ar:"هل لدى طفلك إسهال؟" };
+  if (!ok(s.child_vomiting))
+    return { type:'ask', field:'child_vomiting',
+      fr:`Y a-t-il des vomissements ? Depuis combien de temps ?`,
+      en:"Is there vomiting? For how long?", ar:"هل هناك قيء؟" };
+  if (!ok(s.child_appearance))
+    return { type:'ask', field:'child_appearance',
+      fr:`Comment est l'état général de ${prenom} ? Actif, somnolent, irritable ?`,
+      en:"How is your child's general appearance?", ar:"ما الحالة العامة لطفلك؟" };
   return { type:'slots' };
 }
 
