@@ -32,7 +32,7 @@ export default function DashboardPage() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch('/api/dashboard');
+        const res = await fetch('/api/dashboard', { credentials: 'include' });
         if (res.status === 401) { router.push('/login'); return; }
         if (!res.ok) throw new Error('Erreur API');
         const json = await res.json() as { success: boolean; data: DashboardData };

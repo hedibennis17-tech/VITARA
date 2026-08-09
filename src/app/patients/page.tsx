@@ -11,7 +11,7 @@ export default function PatientsPage(){
   const[search,setSearch]=useState('');
 
   useEffect(()=>{
-    fetch('/api/patients?limit=20').then(r=>{if(r.status===401){router.push('/login');return null;}return r.json();}).then(d=>{if(d?.success)setPatients(d.data.patients);}).finally(()=>setLoading(false));
+    fetch('/api/patients?limit=20', { credentials: 'include' }).then(r=>{if(r.status===401){router.push('/login');return null;}return r.json();}).then(d=>{if(d?.success)setPatients(d.data.patients);}).finally(()=>setLoading(false));
   },[router]);
 
   function gi(f:string,l:string){return`${f?.[0]??''}${l?.[0]??''}`.toUpperCase();}
