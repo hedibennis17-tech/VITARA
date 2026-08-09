@@ -133,7 +133,7 @@ export default function DashboardPage() {
                 ))}
               </div>
             </div>
-            {data.upcomingAppointments.length === 0 ? (
+            {(data.upcomingAppointments||[]).length === 0 ? (
               <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Aucun rendez-vous restant aujourd'hui</div>
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -145,8 +145,8 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.upcomingAppointments.map((appt, i) => (
-                    <tr key={appt.id} style={{ borderBottom: i < data.upcomingAppointments.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                  {(data.upcomingAppointments||[]).map((appt, i) => (
+                    <tr key={appt.id} style={{ borderBottom: i < (data.upcomingAppointments||[]).length - 1 ? '1px solid var(--border)' : 'none' }}>
                       <td style={{ padding: '10px 16px', fontFamily: "'JetBrains Mono',monospace", fontSize: 13, fontWeight: 600, color: 'var(--teal)' }}>
                         {String(appt.start_time).slice(0, 5)}
                       </td>
@@ -180,15 +180,15 @@ export default function DashboardPage() {
             <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <h2 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 14, fontWeight: 600 }}>Appels actifs</h2>
               <span style={{ background: 'var(--mint-dim)', color: 'var(--mint)', fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 6 }}>
-                {data.activeCalls.length} en cours
+                {(data.activeCalls||[]).length} en cours
               </span>
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {data.activeCalls.length === 0 ? (
+              {(data.activeCalls||[]).length === 0 ? (
                 <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>Aucun appel en cours</div>
               ) : (
-                data.activeCalls.map(call => (
+                (data.activeCalls||[]).map(call => (
                   <div key={call.id} style={{ padding: '12px 14px', background: 'var(--midnight)', borderRadius: 10, border: `1px solid ${call.status === 'active' ? 'var(--border-2)' : 'var(--border)'}` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                       <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
