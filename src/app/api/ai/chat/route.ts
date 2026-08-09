@@ -159,9 +159,9 @@ export async function POST(req: NextRequest) {
     const justField = (Object.keys(updates) as (keyof VitaraState)[]).find(k => (updates[k] as any)?.status === 'confirmed');
     const justVal   = justField ? ((updates[justField] as any)?.value || '') : '';
 
-    // ── Sauvegarder en DB directement (plus de fetch interne) ───
+    // ── Sauvegarder en DB (avec await — Vercel tue les fire&forget) ──
     const agentName = agent.charAt(0).toUpperCase() + agent.slice(1);
-    saveConversationToDB(session_id, newState, agent, agentName, language, msgs_transcript);
+    await saveConversationToDB(session_id, newState, agent, agentName, language, msgs_transcript);
 
     // ── Prochaine étape ─────────────────────────────────────────
     const step = nextStep(newState);

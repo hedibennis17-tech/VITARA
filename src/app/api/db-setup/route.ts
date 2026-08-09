@@ -6,6 +6,35 @@ export async function GET() {
   const pool = new Pool({ connectionString:DB, ssl:{rejectUnauthorized:false} });
   try {
     await pool.query(`
+      -- Reset conversations (schéma propre)
+      DROP TABLE IF EXISTS conversations;
+      CREATE TABLE conversations (
+        id              SERIAL PRIMARY KEY,
+        session_id      VARCHAR(60) UNIQUE NOT NULL,
+        agent_id        VARCHAR(20),
+        agent_name      VARCHAR(50),
+        patient_phone   VARCHAR(15),
+        patient_name    TEXT,
+        service         TEXT,
+        practitioner    TEXT,
+        reason          TEXT,
+        body_part       TEXT,
+        accident_type   TEXT,
+        claim_number    TEXT,
+        pain_scale      VARCHAR(5),
+        language        VARCHAR(5) DEFAULT 'fr',
+        status          VARCHAR(20) DEFAULT 'in_progress',
+        started_at      TIMESTAMPTZ DEFAULT NOW(),
+        ended_at        TIMESTAMPTZ,
+        duration_sec    INTEGER,
+        transcript      JSONB DEFAULT '[]',
+        booking_code    VARCHAR(30),
+        booking_date    TEXT,
+        booking_time    VARCHAR(10)
+      );
+      CREATE INDEX idx_conv_phone   ON conversations(patient_phone);
+      CREATE INDEX idx_conv_started ON conversations(started_at DESC);
+
       -- Patients
       CREATE TABLE IF NOT EXISTS patients (
         id            SERIAL PRIMARY KEY,
