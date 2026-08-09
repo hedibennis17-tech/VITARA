@@ -1,53 +1,40 @@
-import { NextRequest } from 'next/server';
-import { withAuth, apiSuccess, apiCreated, apiError, apiServerError } from '@/lib/auth/middleware';
-import { DEMO_MODE, DEMO_PATIENTS } from '@/lib/db/demo';
-import { PatientSchema, parseBody } from '@/lib/validators';
+import { NextRequest, NextResponse } from 'next/server';
+const getPool = async () => {
+  const DB = process.env.DATABASE_URL;
+  if (!DB) return null;
+  const { Pool } = await import('pg');
+  return new Pool({ connectionString:DB, ssl:{rejectUnauthorized:false} });
+};
 
-export const GET = withAuth(async (req, { user }) => {
+export async function GET(req: NextRequest) {
+  const phone = req.nextUrl.searchParams.get('phone')?.replace(/\D/g,'');
+  if (!phone) return NextResponse.json({ error:'phone requis' },{ status:400 });
+  const pool = await getPool();
+  if (!pool) return NextResponse.json({ found:false, db:false });
   try {
-    const { searchParams } = new URL(req.url);
-    const search = searchParams.get('q')?.toLowerCase() ?? '';
-    const page = Math.max(1, parseInt(searchParams.get('page') ?? '1'));
-    const limit = Math.min(100, parseInt(searchParams.get('limit') ?? '20'));
+    const r = await pool.query('SELECT id,full_name,phone,email,ramq,address,family_doctor FROM patients WHERE phone=$1 LIMIT 1',[phone]);
+    if (r.rows.length===0) return NextResponse.json({ found:false });
+    return NextResponse.json({ found:true, patient:r.rows[0] });
+  } catch(e:any) { return NextResponse.json({ error:e.message },{ status:500 });
+  } finally { await pool.end(); }
+}
 
-    if (DEMO_MODE) {
-      let patients = DEMO_PATIENTS;
-      if (search) {
-        patients = patients.filter(p =>
-          p.first_name.toLowerCase().includes(search) ||
-          p.last_name.toLowerCase().includes(search) ||
-          p.phone.includes(search) ||
-          (p.ramq_number?.toLowerCase().includes(search))
-        );
-      }
-      const total = patients.length;
-      const paginated = patients.slice((page - 1) * limit, page * limit);
-      return apiSuccess({ patients: paginated, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
-    }
-
-    const { query } = await import('@/lib/db');
-    let where = 'p.clinic_id=$1 AND p.is_active=TRUE';
-    const params: unknown[] = [user.clinicId];
-    if (search) { params.push(`%${search}%`); where += ` AND (p.first_name ILIKE $${params.length} OR p.last_name ILIKE $${params.length} OR p.phone ILIKE $${params.length} OR p.ramq_number ILIKE $${params.length})`; }
-    const offset = (page - 1) * limit;
-    const rows = await query(`SELECT p.id,p.first_name,p.last_name,p.date_of_birth,p.gender,p.phone,p.phone_alt,p.email,p.language,p.ramq_number,p.allergies,p.is_active,p.created_at,p.updated_at,pr.title||' '||u.first_name||' '||u.last_name AS primary_provider,COUNT(*) OVER() AS total_count FROM patients p LEFT JOIN providers pr ON p.primary_provider_id=pr.id LEFT JOIN users u ON pr.user_id=u.id WHERE ${where} ORDER BY p.last_name,p.first_name LIMIT $${params.length+1} OFFSET $${params.length+2}`, [...params, limit, offset]);
-    const total = rows[0] ? parseInt(String((rows[0] as Record<string,unknown>).total_count)) : 0;
-    return apiSuccess({ patients: rows, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
-  } catch (err) { return apiServerError(err); }
-});
-
-export const POST = withAuth(async (req, { user }) => {
+export async function POST(req: NextRequest) {
+  const { full_name,phone,email,ramq,address,family_doctor } = await req.json();
+  const p = (phone||'').replace(/\D/g,'');
+  if (!p) return NextResponse.json({ error:'phone requis' },{ status:400 });
+  const pool = await getPool();
+  if (!pool) return NextResponse.json({ success:false, db:false });
   try {
-    if (DEMO_MODE) return apiError('Création désactivée en mode démo', 403);
-    const body = await req.json();
-    const parsed = parseBody(PatientSchema, body);
-    if (!parsed.success) return apiError(parsed.error, 422);
-    const { query: dbQuery, queryOne } = await import('@/lib/db');
-    const { v4: uuidv4 } = await import('uuid');
-    const d = parsed.data;
-    const existing = await queryOne('SELECT id FROM patients WHERE clinic_id=$1 AND phone=$2', [user.clinicId, d.phone]);
-    if (existing) return apiError('Un patient avec ce numéro existe déjà', 409);
-    const patient = await queryOne(`INSERT INTO patients (id,clinic_id,first_name,last_name,date_of_birth,gender,language,phone,phone_alt,email,address,ramq_number,allergies,primary_provider_id,medical_notes,created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *`, [uuidv4(),user.clinicId,d.firstName,d.lastName,d.dateOfBirth,d.gender,d.language,d.phone,d.phoneAlt??null,d.email||null,JSON.stringify(d.address??{}),d.ramqNumber??null,d.allergies,d.primaryProviderId??null,d.medicalNotes??null,user.id]);
-    return apiCreated({ patient });
-  } catch (err) { return apiServerError(err); }
-}, { roles: ['receptionist','supervisor','admin'] });
+    await pool.query(`
+      INSERT INTO patients (full_name,phone,email,ramq,address,family_doctor)
+      VALUES ($1,$2,$3,$4,$5,$6)
+      ON CONFLICT (phone) DO UPDATE SET
+        full_name=COALESCE($1,patients.full_name), email=COALESCE($3,patients.email),
+        ramq=COALESCE($4,patients.ramq), address=COALESCE($5,patients.address),
+        family_doctor=COALESCE($6,patients.family_doctor), updated_at=NOW()
+    `,[full_name||null,p,email||null,ramq||null,address||null,family_doctor||null]);
+    return NextResponse.json({ success:true });
+  } catch(e:any) { return NextResponse.json({ error:e.message },{ status:500 });
+  } finally { await pool.end(); }
+}

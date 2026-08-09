@@ -1,4 +1,4 @@
-// ── VITARA Chat API v8.0 — propre, zéro couche ───────────────
+// ── VITARA Chat API v9.0 — No Groq for intake questions ──────
 import { NextRequest, NextResponse } from 'next/server';
 import {
   VitaraState, EMPTY_STATE, extractFromMessage, applyUpdates,
@@ -6,12 +6,9 @@ import {
 } from '@/lib/conversation/engine';
 
 export const maxDuration = 30;
-const MODEL = 'llama-3.1-8b-instant';
-const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 export async function POST(req: NextRequest) {
   const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) return NextResponse.json({ error:'GROQ_API_KEY manquante' },{ status:500 });
 
   try {
     const body = await req.json() as {
@@ -23,26 +20,23 @@ export async function POST(req: NextRequest) {
     };
     const { messages, language='fr', agent='houda', gender='female', conversation_state } = body;
 
-    // ── État: reconstruire depuis le client ───────────────────
-    const state: VitaraState = conversation_state
-      ? { ...EMPTY_STATE, ...conversation_state }
-      : { ...EMPTY_STATE };
+    // ── Reconstruire l'état ───────────────────────────────────
+    const state: VitaraState = { ...EMPTY_STATE, ...(conversation_state||{}) };
 
-    // ── Extraction regex du dernier message ───────────────────
+    // ── Extraction regex ──────────────────────────────────────
     const lastMsg = [...messages].reverse().find(m=>m.role==='user')?.content || '';
     const updates  = extractFromMessage(lastMsg, state);
     const newState = applyUpdates(state, updates);
 
-    // Trouver le premier champ nouvellement confirmé (pour l'ack)
     const justConfirmedField = (Object.keys(updates) as (keyof VitaraState)[])
       .find(k => (updates[k] as any)?.status === 'confirmed');
-    const justConfirmedVal   = justConfirmedField
+    const justConfirmedVal = justConfirmedField
       ? ((updates[justConfirmedField] as any)?.value || '') : '';
 
-    // ── Prochaine étape (déterministe) ────────────────────────
+    // ── Prochaine étape ───────────────────────────────────────
     const step = nextStep(newState);
 
-    // Si tout est collecté → retourner les créneaux SANS Groq
+    // ── Créneaux : retourner directement sans Groq ────────────
     if (step.type === 'slots') {
       const slots = buildSlots(newState);
       const prov  = slots[0].provider;
@@ -57,76 +51,22 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // ── Construire la réponse côté serveur (GARANTI) ──────────
+    // ── Construire la réponse DIRECTEMENT côté serveur ────────
+    // Groq N'EST PLUS appelé pour les questions d'intake — trop peu fiable
     const ack      = justConfirmedField ? buildAck(justConfirmedField, justConfirmedVal, language) : '';
-    const question = step.fr; // FR par défaut, à localiser si besoin
-    const guaranteed = [ack, question].filter(Boolean).join(' ');
+    const question = language==='en' ? (step as any).en : language==='ar' ? (step as any).ar : (step as any).fr;
+    const speak    = [ack, question].filter(Boolean).join(' ');
 
-    // ── Groq: rendre la phrase plus naturelle (rôle limité) ───
-    const name   = agent.charAt(0).toUpperCase() + agent.slice(1);
-    const isMale = gender === 'male';
-
-    const systemPrompt = `Tu es ${name}, ${isMale?'assistant médical':'assistante médicale'} à la Clinique Médicale JOLIBOURG de Laval.
-Genre: ${isMale?'MASCULIN (assistant, prêt)':'FÉMININ (assistante, prête)'}
-JSON uniquement: {"speak":"...","intent":"intake","state":{},"slots":null,"booking":null}
-Rends ce message légèrement plus naturel sans changer le sens ni ajouter d'autres questions:
-"${guaranteed}"`;
-
-    const safeMsg = messages.slice(-4);
-    const trimmed = safeMsg[0]?.role!=='user' ? safeMsg.slice(1) : safeMsg;
-
-    let res  = await fetch('https://api.groq.com/openai/v1/chat/completions',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`},
-      body:JSON.stringify({
-        model:MODEL, max_tokens:100, temperature:0.3,
-        response_format:{type:'json_object'},
-        messages:[{role:'system',content:systemPrompt},...trimmed],
-      }),
-    });
-    let data = await res.json() as any;
-
-    // TPM retry
-    if (res.status===429 && data.error?.message?.includes('per minute')) {
-      const w = data.error.message.match(/in (\d+\.?\d*)s/);
-      if (w && parseFloat(w[1])<=12) {
-        await sleep(parseFloat(w[1])*1000+500);
-        res  = await fetch('https://api.groq.com/openai/v1/chat/completions',{
-          method:'POST',
-          headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`},
-          body:JSON.stringify({model:MODEL,max_tokens:100,temperature:0.3,
-            response_format:{type:'json_object'},
-            messages:[{role:'system',content:systemPrompt},...trimmed]}),
-        });
-        data = await res.json() as any;
-      }
-    }
-
-    // TPD — fallback direct sans Groq
-    if (res.status===429) {
-      const text = JSON.stringify({speak:guaranteed,intent:'intake',state:{},slots:null,booking:null});
-      return NextResponse.json({content:[{type:'text',text}],conversation_state:newState,model:'local'});
-    }
-
-    // Construire la réponse finale avec fallback garanti
-    let speak = guaranteed;
-    if (res.ok && data.choices?.[0]?.message?.content) {
-      try {
-        const p = JSON.parse(data.choices[0].message.content);
-        if (p.speak && typeof p.speak==='string' && p.speak.length<250) speak = p.speak;
-      } catch { /* garder guaranteed */ }
-    }
-
-    const text = JSON.stringify({speak,intent:'intake',state:{},slots:null,booking:null});
+    const text = JSON.stringify({speak, intent:'intake', state:{}, slots:null, booking:null});
     return NextResponse.json({
       content:[{type:'text',text}],
       conversation_state: newState,
-      model: MODEL,
+      model: 'server',
       next_field: step.field,
     });
 
   } catch(err) {
     const fb = '{"speak":"Erreur réseau. Veuillez réessayer.","intent":"error","state":{},"slots":null,"booking":null}';
-    return NextResponse.json({content:[{type:'text',text:fb}],code:'SERVER_ERROR'});
+    return NextResponse.json({content:[{type:'text',text:fb}], code:'SERVER_ERROR'});
   }
 }
