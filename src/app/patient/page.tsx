@@ -421,6 +421,7 @@ export default function PatientPage() {
           gender:             agentRef.current.id === 'said' || agentRef.current.id === 'alain' ? 'male' : 'female',
           conversation_state: convState.current,
           session_id:         sessionId.current,
+          msgs_transcript:    histRef.current.map((m:any) => ({ role: m.role === 'user' ? 'patient' : 'ai', text: m.content })),
         }),
       });
 
