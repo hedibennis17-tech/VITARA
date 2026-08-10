@@ -148,59 +148,86 @@ function buildVoiceAssignments(
   };
 }
 
-function Avatar({ id, size=200, talking=false, color='#00D7C8' }: any) {
+function Avatar({ id, size=200, talking=false, color='#00D7C8', vState='idle', audioRef=null }: any) {
   const src = AGENT_PHOTO[id] || AGENT_PHOTO.houda;
   const pos = AGENT_POS[id]  || 'center center';
+  const [amp, setAmp] = React.useState(0);
+  const [blink, setBlink] = React.useState(false);
+  const rafRef = React.useRef<number>(0);
   const border = 3;
-  const inner = size - border * 2;
+  const inner  = size - border * 2;
+
+  React.useEffect(() => {
+    const go = () => { setBlink(true); setTimeout(()=>setBlink(false),120); };
+    const iv = setInterval(go, 2800 + Math.random()*2000);
+    return () => clearInterval(iv);
+  }, []);
+
+  React.useEffect(() => {
+    if (vState !== 'speaking' || !audioRef?.current) { setAmp(0); return; }
+    let ctx: AudioContext|null = null;
+    let running = true;
+    try {
+      ctx = new AudioContext();
+      const src2 = ctx.createMediaElementSource(audioRef.current);
+      const an = ctx.createAnalyser(); an.fftSize = 128;
+      src2.connect(an); an.connect(ctx.destination);
+      const buf = new Uint8Array(an.frequencyBinCount);
+      const tick = () => {
+        if (!running) return;
+        an.getByteTimeDomainData(buf);
+        let s = 0; for (let i=0;i<buf.length;i++) s+=Math.abs(buf[i]-128);
+        setAmp(Math.min(1,(s/buf.length)/25));
+        rafRef.current = requestAnimationFrame(tick);
+      };
+      rafRef.current = requestAnimationFrame(tick);
+    } catch {}
+    return () => { running=false; cancelAnimationFrame(rafRef.current); ctx?.close().catch(()=>{}); setAmp(0); };
+  }, [vState, audioRef]);
+
+  const haloColor = vState==='speaking'?color:vState==='listening'?'#00E5A0':vState==='thinking'?'#F9A826':'transparent';
+  const rings = talking ? [1,2] : [];
 
   return (
     <div style={{ position:'relative', width:size, height:size, flexShrink:0 }}>
-      {/* Anneaux pulsants quand parle */}
-      {talking && [1,2].map(i => (
-        <div key={i} style={{
-          position:'absolute',
-          top:-(i*11), left:-(i*11),
-          width:size+(i*22), height:size+(i*22),
-          borderRadius:'50%',
-          border:`1.5px solid ${color}`,
-          opacity:.5,
-          animation:`ring ${1.8+i*.35}s ease-out infinite`,
-          animationDelay:`${i*.3}s`,
-          pointerEvents:'none',
-        }}/>
+      {rings.map(i => (
+        <div key={i} style={{ position:'absolute', top:-(i*11), left:-(i*11),
+          width:size+(i*22), height:size+(i*22), borderRadius:'50%',
+          border:`1.5px solid ${color}`, opacity:.5,
+          animation:`ring ${1.8+i*.35}s ease-out infinite`, animationDelay:`${i*.3}s`,
+          pointerEvents:'none' }}/>
       ))}
-      {/* Contour coloré — tourne quand parle */}
-      <div style={{
-        width:size, height:size, borderRadius:'50%',
+      <div style={{ width:size, height:size, borderRadius:'50%',
         background:`conic-gradient(${color} 0%, ${color}44 45%, ${color} 100%)`,
-        padding:border, boxSizing:'border-box',
+        padding:border, boxSizing:'border-box' as const,
         animation: talking ? 'spin 3s linear infinite' : 'none',
         boxShadow:`0 0 ${talking?22:10}px ${color}${talking?'80':'38'}`,
-        transition:'box-shadow .4s',
+        transition:'box-shadow .4s, transform .05s',
+        transform: vState==='speaking' ? `scale(${1+amp*0.02})` : 'scale(1)',
       }}>
-        <div style={{ width:inner, height:inner, borderRadius:'50%', overflow:'hidden', background:'#07111F' }}>
-          <img src={src} alt={id} style={{
-            width:'100%', height:'100%', objectFit:'cover', objectPosition:pos, display:'block',
-            filter: talking ? `brightness(1.08)` : 'brightness(1)',
-            transition:'filter .3s',
-          }}/>
+        <div style={{ width:inner, height:inner, borderRadius:'50%', overflow:'hidden', background:'#07111F', position:'relative' }}>
+          <img src={src} alt={id} style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:pos, display:'block',
+            filter: talking ? 'brightness(1.08)' : 'brightness(1)' }}/>
+          {blink && <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.04)', borderRadius:'50%' }}/>}
+          {vState==='speaking' && amp>0.08 && (
+            <div style={{ position:'absolute', bottom:'20%', left:'50%', transform:'translateX(-50%)',
+              width:`${8+amp*18}px`, height:`${3+amp*8}px`,
+              borderRadius:'0 0 50% 50%', background:'rgba(0,0,0,0.18)',
+              transition:'all .04s ease' }}/>
+          )}
         </div>
       </div>
-      {/* Point vert "parle" */}
-      {talking && (
-        <div style={{
-          position:'absolute', bottom:4, right:4,
-          width:13, height:13, borderRadius:'50%',
-          background:color, border:'2px solid #07111F',
-          animation:'glow 1s ease-in-out infinite',
-        }}/>
+      {haloColor!=='transparent' && (
+        <div style={{ position:'absolute', inset:-6, borderRadius:'50%',
+          border:`2px solid ${haloColor}88`, animation:'pulse-halo 1.2s ease-in-out infinite',
+          pointerEvents:'none' }}/>
       )}
+      <div style={{ position:'absolute', bottom:4, right:4, width:12, height:12, borderRadius:'50%',
+        background: vState==='speaking'?color:vState==='listening'?'#00E5A0':vState==='thinking'?'#F9A826':'#5E7A96',
+        border:'2px solid #07111F',
+        animation: (vState==='speaking'||vState==='listening') ? 'dot-blink .8s ease-in-out infinite' : 'none' }}/>
     </div>
   );
-}
-function Bars({ active=false, color='#00D7C8', n=16 }:any) {
-  return <div style={{display:'flex',alignItems:'center',gap:2.5,height:26}}>{Array.from({length:n}).map((_,i)=><div key={i} style={{width:3,minHeight:'12%',borderRadius:2,background:`linear-gradient(to top,${color},${color}80)`,animation:active?`wave ${.2+(i%5)*.07}s ease-in-out infinite alternate`:'none',height:active?undefined:`${16+(i%4)*8}%`,animationDelay:`${i*.04}s`,opacity:active?1:.3}}/> )}</div>;
 }
 
 function ECG({ color='#00D7C8', op=.2 }:any) {
@@ -723,7 +750,7 @@ export default function PatientPage() {
           <div style={{position:'absolute',width:150,height:150,borderRadius:'50%',background:`radial-gradient(circle,${agent.color}18 0%,transparent 70%)`}}/>
           <ECG color={agent.color} op={.15}/>
           <div style={{position:'relative',zIndex:2,animation:'float 4s ease-in-out infinite'}}>
-            <Avatar id={agent.id} size={155} talking={vState==='speaking'} color={agent.color}/>
+            <Avatar id={agent.id} size={155} talking={vState==='speaking'} color={agent.color} vState={vState} audioRef={audioRef}/>
           </div>
         </div>
 
