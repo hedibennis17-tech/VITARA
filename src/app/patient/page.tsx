@@ -37,7 +37,7 @@ const CSS = `
 @keyframes slideIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
 @keyframes dot{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}}
 @keyframes glow{0%,100%{opacity:.5}50%{opacity:1}}
-@keyframes pulse-halo{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.08);opacity:.4}}
+@keyframes halo-glow{0%,100%{opacity:.85;box-shadow:0 0 12px var(--hc)}50%{opacity:.45;box-shadow:0 0 28px var(--hc)}} @keyframes pulse-halo{0%,100%{opacity:.9}50%{opacity:.4}}
 @keyframes dot-blink{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.6);opacity:.7}}
 @keyframes avatar-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.015)}}
 @keyframes bar-wave{0%,100%{transform:scaleY(0.4)}50%{transform:scaleY(1)}}`;
