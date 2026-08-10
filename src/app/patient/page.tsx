@@ -1177,16 +1177,22 @@ export default function PatientPage() {
 
       {/* Orbe vocal (uniquement si mode vocal activé) */}
       {vocal && (
-        <div style={{padding:'14px 0 8px',display:'flex',flexDirection:'column',alignItems:'center',background:`radial-gradient(ellipse at center,${agent.color}07 0%,transparent 65%)`,flexShrink:0,position:'relative',minHeight:170}}>
+        <div style={{padding:'16px 0 10px',display:'flex',flexDirection:'column',alignItems:'center',background:`radial-gradient(ellipse at center,${agent.color}07 0%,transparent 65%)`,flexShrink:0,position:'relative',minHeight:290}}>
           <ECG color={agent.color} op={.12}/>
-          <div style={{position:'relative',width:130,height:130,display:'flex',alignItems:'center',justifyContent:'center'}}>
-            {[1,2].map(i=><div key={i} style={{position:'absolute',width:130+i*32,height:130+i*32,borderRadius:'50%',border:`1px solid ${agent.color}`,animation:`ring ${1.9+i*.3}s ease-out infinite`,animationDelay:`${i*.35}s`,opacity:vState!=='idle'?.55:.18}}/>)}
-            <div style={{width:112,height:112,borderRadius:'50%',background:`radial-gradient(circle at 35% 35%,${agent.color}20,${T.bg}88)`,border:`2px solid ${agent.color}38`,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:`0 0 26px ${agent.color}28`}}>
-              <span style={{fontSize:36}}>{agent.badge}</span>
-            </div>
-          </div>
-          <div style={{marginTop:6,fontSize:11,color:agent.color,fontWeight:500}}>
-            {vState==='speaking'?`${agent.name} parle…`:vState==='listening'?'Je vous écoute…':vState==='thinking'?'Analyse…':'Appuyez sur le mic pour parler'}
+          {/* ✅ Vraie photo de l'agent avec animations */}
+          <Avatar
+            id={agent.id}
+            size={220}
+            talking={vState==='speaking'}
+            color={agent.color}
+            vState={vState}
+            audioRef={audioRef}
+          />
+          <div style={{marginTop:8,fontSize:12,color:agent.color,fontWeight:600,letterSpacing:'.02em'}}>
+            {vState==='speaking'?`${agent.name} parle…`
+            :vState==='listening'?'Je vous écoute…'
+            :vState==='thinking'?'Analyse…'
+            :'Appuyez sur le mic pour parler'}
           </div>
         </div>
       )}
