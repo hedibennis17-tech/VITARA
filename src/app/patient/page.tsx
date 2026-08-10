@@ -759,11 +759,11 @@ export default function PatientPage() {
         </div>
 
         {/* Avatar hero */}
-        <div style={{position:'relative',display:'flex',justifyContent:'center',alignItems:'center',height:200,margin:'4px 0 0'}}>
-          <div style={{position:'absolute',width:150,height:150,borderRadius:'50%',background:`radial-gradient(circle,${agent.color}18 0%,transparent 70%)`}}/>
+        <div style={{position:'relative',display:'flex',justifyContent:'center',alignItems:'center',height:260,margin:'4px 0 0'}}>
+          <div style={{position:'absolute',width:240,height:240,borderRadius:'50%',background:`radial-gradient(circle,${agent.color}08 0%,transparent 60%)`}}/>
           <ECG color={agent.color} op={.15}/>
           <div style={{position:'relative',zIndex:2,animation:'float 4s ease-in-out infinite'}}>
-            <Avatar id={agent.id} size={155} talking={vState==='speaking'} color={agent.color} vState={vState} audioRef={audioRef}/>
+            <Avatar id={agent.id} size={220} talking={vState==='speaking'} color={agent.color} vState={vState} audioRef={audioRef}/>
           </div>
         </div>
 
