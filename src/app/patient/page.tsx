@@ -151,19 +151,19 @@ function buildVoiceAssignments(
 function Avatar({ id, size=200, talking=false, color='#00D7C8', vState='idle', audioRef=null }: any) {
   const src = AGENT_PHOTO[id] || AGENT_PHOTO.houda;
   const pos = AGENT_POS[id]  || 'center center';
-  const [amp, setAmp] = React.useState(0);
-  const [blink, setBlink] = React.useState(false);
-  const rafRef = React.useRef<number>(0);
+  const [amp, setAmp] = useState(0);
+  const [blink, setBlink] = useState(false);
+  const rafRef = useRef<number>(0);
   const border = 3;
   const inner  = size - border * 2;
 
-  React.useEffect(() => {
+  useEffect(() => {
     const go = () => { setBlink(true); setTimeout(()=>setBlink(false),120); };
     const iv = setInterval(go, 2800 + Math.random()*2000);
     return () => clearInterval(iv);
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (vState !== 'speaking' || !audioRef?.current) { setAmp(0); return; }
     let ctx: AudioContext|null = null;
     let running = true;
