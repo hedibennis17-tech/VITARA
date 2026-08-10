@@ -36,7 +36,10 @@ const CSS = `
 @keyframes slideIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
 @keyframes dot{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}}
 @keyframes glow{0%,100%{opacity:.5}50%{opacity:1}}
-@keyframes spin{to{transform:rotate(360deg)}}`;
+@keyframes pulse-halo{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.08);opacity:.4}}
+@keyframes dot-blink{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.6);opacity:.7}}
+@keyframes avatar-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.015)}}
+@keyframes bar-wave{0%,100%{transform:scaleY(0.4)}50%{transform:scaleY(1)}}`;
 
 // ── AVATAR SVG ────────────────────────────────────────────────
 // ── PHOTOS agents ────────────────────────────────────────────
@@ -150,97 +153,124 @@ function buildVoiceAssignments(
 
 function Avatar({ id, size=200, talking=false, color='#00D7C8', vState='idle', audioRef=null }: any) {
   const src = AGENT_PHOTO[id] || AGENT_PHOTO.houda;
-  const pos = AGENT_POS[id]  || 'center center';
+  const pos = AGENT_POS[id]  || 'center 15%';
   const [amp, setAmp] = useState(0);
-  const [blink, setBlink] = useState(false);
   const rafRef = useRef<number>(0);
-  const border = 3;
+  const border = vState==='speaking' ? 4 : 3;
   const inner  = size - border * 2;
 
-  useEffect(() => {
-    const go = () => { setBlink(true); setTimeout(()=>setBlink(false),120); };
-    const iv = setInterval(go, 2800 + Math.random()*2000);
-    return () => clearInterval(iv);
-  }, []);
-
+  // Lip-sync amplitude via Web Audio API
   useEffect(() => {
     if (vState !== 'speaking' || !audioRef?.current) { setAmp(0); return; }
     let ctx: AudioContext|null = null;
     let running = true;
-    try {
-      ctx = new AudioContext();
-      const src2 = ctx.createMediaElementSource(audioRef.current);
-      const an = ctx.createAnalyser(); an.fftSize = 128;
-      src2.connect(an); an.connect(ctx.destination);
-      const buf = new Uint8Array(an.frequencyBinCount);
-      const tick = () => {
-        if (!running) return;
-        an.getByteTimeDomainData(buf);
-        let s = 0; for (let i=0;i<buf.length;i++) s+=Math.abs(buf[i]-128);
-        setAmp(Math.min(1,(s/buf.length)/25));
+    const start = async () => {
+      try {
+        ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const src2 = ctx.createMediaElementSource(audioRef.current);
+        const an = ctx.createAnalyser(); an.fftSize = 128;
+        src2.connect(an); an.connect(ctx.destination);
+        const buf = new Uint8Array(an.frequencyBinCount);
+        const tick = () => {
+          if (!running) return;
+          an.getByteTimeDomainData(buf);
+          let s = 0; for (let i=0;i<buf.length;i++) s+=Math.abs(buf[i]-128);
+          setAmp(Math.min(1,(s/buf.length)/20));
+          rafRef.current = requestAnimationFrame(tick);
+        };
         rafRef.current = requestAnimationFrame(tick);
-      };
-      rafRef.current = requestAnimationFrame(tick);
-    } catch {}
+      } catch {}
+    };
+    start();
     return () => { running=false; cancelAnimationFrame(rafRef.current); ctx?.close().catch(()=>{}); setAmp(0); };
   }, [vState, audioRef]);
 
-  const haloColor = vState==='speaking'?color:vState==='listening'?'#00E5A0':vState==='thinking'?'#F9A826':'transparent';
-  const rings = talking ? [1,2] : [];
+  // Couleur et opacité du halo selon l'état
+  const haloColor = vState==='speaking' ? color
+                  : vState==='listening'? '#00E5A0'
+                  : vState==='thinking' ? '#F9A826'
+                  : color;
+  const haloPulse = vState==='speaking'  ? 'pulse-halo 0.8s ease-in-out infinite'
+                  : vState==='listening' ? 'pulse-halo 1.4s ease-in-out infinite'
+                  : vState==='thinking'  ? 'pulse-halo 2s ease-in-out infinite'
+                  : 'none';
+  const borderW = vState==='speaking' ? 4 : 3;
+  const glowSize = vState==='speaking' ? 20+amp*15 : 10;
+  const scale    = vState==='speaking' ? 1+amp*0.04 : 1;
 
   return (
     <div style={{ position:'relative', width:size, height:size, flexShrink:0 }}>
-      {rings.map(i => (
-        <div key={i} style={{ position:'absolute', top:-(i*11), left:-(i*11),
-          width:size+(i*22), height:size+(i*22), borderRadius:'50%',
+      {/* Anneaux pulsants (toujours visibles quand talking) */}
+      {talking && [1,2].map(i => (
+        <div key={i} style={{
+          position:'absolute', top:-(i*12), left:-(i*12),
+          width:size+(i*24), height:size+(i*24), borderRadius:'50%',
           border:`1.5px solid ${color}`, opacity:.5,
-          animation:`ring ${1.8+i*.35}s ease-out infinite`, animationDelay:`${i*.3}s`,
-          pointerEvents:'none' }}/>
+          animation:`ring ${1.8+i*.35}s ease-out infinite`,
+          animationDelay:`${i*.3}s`, pointerEvents:'none',
+        }}/>
       ))}
-      <div style={{ width:size, height:size, borderRadius:'50%',
-        background:`conic-gradient(${color} 0%, ${color}44 45%, ${color} 100%)`,
-        padding:border, boxSizing:'border-box' as const,
-        animation: talking ? 'spin 3s linear infinite' : 'none',
-        boxShadow:`0 0 ${talking?22:10}px ${color}${talking?'80':'38'}`,
-        transition:'box-shadow .4s, transform .05s',
-        transform: vState==='speaking' ? `scale(${1+amp*0.02})` : 'scale(1)',
+
+      {/* Halo externe pulsant */}
+      <div style={{
+        position:'absolute', inset:-8, borderRadius:'50%',
+        border:`2.5px solid ${haloColor}`,
+        opacity: vState==='idle' ? 0.25 : 0.85,
+        animation: haloPulse,
+        boxShadow:`0 0 ${glowSize}px ${haloColor}66`,
+        transition:'border-color .3s, box-shadow .1s',
+        pointerEvents:'none',
+      }}/>
+
+      {/* Contour photo */}
+      <div style={{
+        width:size, height:size, borderRadius:'50%',
+        background:`conic-gradient(${haloColor} 0%, ${haloColor}44 45%, ${haloColor} 100%)`,
+        padding:borderW, boxSizing:'border-box' as const,
+        animation: talking ? 'spin 3s linear infinite' : 'avatar-breathe 4s ease-in-out infinite',
+        boxShadow:`0 0 ${glowSize}px ${haloColor}50`,
+        transform:`scale(${scale})`,
+        transition:'transform .05s ease, box-shadow .1s ease',
       }}>
-        <div style={{ width:inner, height:inner, borderRadius:'50%', overflow:'hidden', background:'#07111F', position:'relative' }}>
-          <img src={src} alt={id} style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:pos, display:'block',
-            filter: talking ? 'brightness(1.08)' : 'brightness(1)' }}/>
-          {blink && <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.04)', borderRadius:'50%' }}/>}
-          {vState==='speaking' && amp>0.08 && (
-            <div style={{ position:'absolute', bottom:'20%', left:'50%', transform:'translateX(-50%)',
-              width:`${8+amp*18}px`, height:`${3+amp*8}px`,
-              borderRadius:'0 0 50% 50%', background:'rgba(0,0,0,0.18)',
-              transition:'all .04s ease' }}/>
+        <div style={{
+          width:inner, height:inner, borderRadius:'50%',
+          overflow:'hidden', background:'#07111F', position:'relative',
+        }}>
+          <img src={src} alt={id} style={{
+            width:'100%', height:'100%',
+            objectFit:'cover', objectPosition:pos, display:'block',
+            filter: talking ? 'brightness(1.05) saturate(1.1)' : 'brightness(1)',
+            transition:'filter .3s',
+          }}/>
+          {/* Overlay bouche lip-sync */}
+          {vState==='speaking' && amp>0.06 && (
+            <div style={{
+              position:'absolute', bottom:'22%', left:'50%',
+              transform:'translateX(-50%)',
+              width:`${6+amp*20}px`, height:`${2+amp*9}px`,
+              borderRadius:'0 0 50% 50%',
+              background:'rgba(0,0,0,0.2)',
+              transition:'all .05s ease',
+            }}/>
           )}
         </div>
       </div>
-      {haloColor!=='transparent' && (
-        <div style={{ position:'absolute', inset:-6, borderRadius:'50%',
-          border:`2px solid ${haloColor}88`, animation:'pulse-halo 1.2s ease-in-out infinite',
-          pointerEvents:'none' }}/>
-      )}
-      <div style={{ position:'absolute', bottom:4, right:4, width:12, height:12, borderRadius:'50%',
-        background: vState==='speaking'?color:vState==='listening'?'#00E5A0':vState==='thinking'?'#F9A826':'#5E7A96',
-        border:'2px solid #07111F',
-        animation: (vState==='speaking'||vState==='listening') ? 'dot-blink .8s ease-in-out infinite' : 'none' }}/>
+
+      {/* Point statut */}
+      <div style={{
+        position:'absolute', bottom:6, right:6,
+        width:14, height:14, borderRadius:'50%',
+        background: vState==='speaking' ? color
+                  : vState==='listening'? '#00E5A0'
+                  : vState==='thinking' ? '#F9A826'
+                  : '#5E7A96',
+        border:'2.5px solid #07111F',
+        boxShadow:`0 0 6px ${haloColor}`,
+        animation: talking ? 'dot-blink .7s ease-in-out infinite' : 'none',
+        transition:'background .3s',
+      }}/>
     </div>
   );
-}
-
-function Bars({ active=false, color='#00D7C8', n=12 }:any) {
-  return <div style={{display:'flex',alignItems:'center',gap:2,height:20}}>
-    {Array.from({length:n}).map((_,i)=>(
-      <div key={i} style={{
-        width:2, borderRadius:2,
-        background:color,
-        height: active ? `${6+Math.sin(i*0.7)*6}px` : '3px',
-        animation: active ? `bar-wave 0.8s ease-in-out infinite` : 'none',
-        animationDelay:`${i*.04}s`,opacity:active?1:.3}}/>
-    ))}
-  </div>;
 }
 
 function ECG({ color='#00D7C8', op=.2 }:any) {
