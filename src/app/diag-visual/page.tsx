@@ -64,13 +64,14 @@ export default function DiagVisual() {
               <div key={i} style={{position:'absolute',top:-(i*12),left:-(i*12),width:SIZE+(i*24),height:SIZE+(i*24),borderRadius:'50%',border:`1.5px solid ${agent.color}`,opacity:.5,animation:`ring ${1.8+i*.35}s ease-out infinite`,animationDelay:`${i*.3}s`,pointerEvents:'none'}}/>
             ))}
             <div style={{position:'absolute',inset:-8,borderRadius:'50%',border:`2.5px solid ${halo}`,opacity:vState==='idle'?.3:.9,animation:anim,boxShadow:`0 0 20px ${halo}66`,pointerEvents:'none'}}/>
-            <div style={{width:SIZE,height:SIZE,borderRadius:'50%',background:`conic-gradient(${halo} 0%,${halo}44 45%,${halo} 100%)`,padding:3,boxSizing:'border-box' as const,animation:vState==='speaking'?'spin 3s linear infinite':'avatar-breathe 4s ease-in-out infinite',boxShadow:`0 0 15px ${halo}50`}}>
-              <div style={{width:SIZE-6,height:SIZE-6,borderRadius:'50%',overflow:'hidden',background:'#07111F'}}>
-                <img src={agent.img} alt={agent.id} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:agent.pos}}
-                  onLoad={()=>add(`✅ ${agent.id} DOM visible`)}
-                  onError={()=>add(`❌ ${agent.id} ERREUR DOM`)}
-                />
-              </div>
+            {/* Bordure tournante séparée */}
+            <div style={{position:'absolute',inset:0,borderRadius:'50%',background:`conic-gradient(${halo} 0%,${halo}22 45%,${halo} 100%)`,animation:vState==='speaking'?'spin 3s linear infinite':'none',pointerEvents:'none'}}/>
+            {/* Photo fixe */}
+            <div style={{position:'absolute',inset:3,borderRadius:'50%',overflow:'hidden',background:'#07111F'}}>
+              <img src={agent.img} alt={agent.id} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:agent.pos}}
+                onLoad={()=>add(`✅ ${agent.id} DOM visible`)}
+                onError={()=>add(`❌ ${agent.id} ERREUR DOM`)}
+              />
             </div>
             <div style={{position:'absolute',bottom:6,right:6,width:14,height:14,borderRadius:'50%',background:halo,border:'2.5px solid #07111F',animation:vState!=='idle'?'dot-blink .7s ease-in-out infinite':'none'}}/>
           </div>

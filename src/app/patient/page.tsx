@@ -222,38 +222,41 @@ function Avatar({ id, size=200, talking=false, color='#00D7C8', vState='idle', a
         pointerEvents:'none',
       }}/>
 
-      {/* Contour photo */}
+      {/* Bordure tournante SÉPARÉE de la photo */}
       <div style={{
-        width:size, height:size, borderRadius:'50%',
-        background:`conic-gradient(${haloColor} 0%, ${haloColor}44 45%, ${haloColor} 100%)`,
-        padding:borderW, boxSizing:'border-box' as const,
-        animation: talking ? 'spin 3s linear infinite' : 'avatar-breathe 4s ease-in-out infinite',
-        boxShadow:`0 0 ${glowSize}px ${haloColor}50`,
+        position:'absolute', inset:0,
+        borderRadius:'50%',
+        background:`conic-gradient(${haloColor} 0%, ${haloColor}22 45%, ${haloColor} 100%)`,
+        animation: talking ? 'spin 3s linear infinite' : 'none',
+        opacity: 0.9,
+        pointerEvents:'none',
+      }}/>
+      {/* Photo — ne tourne JAMAIS */}
+      <div style={{
+        position:'absolute', inset:borderW,
+        borderRadius:'50%', overflow:'hidden',
+        background:'#07111F',
         transform:`scale(${scale})`,
-        transition:'transform .05s ease, box-shadow .1s ease',
+        transition:'transform .05s ease',
+        boxShadow:`0 0 ${glowSize}px ${haloColor}50`,
       }}>
-        <div style={{
-          width:inner, height:inner, borderRadius:'50%',
-          overflow:'hidden', background:'#07111F', position:'relative',
-        }}>
-          <img src={src} alt={id} style={{
-            width:'100%', height:'100%',
-            objectFit:'cover', objectPosition:pos, display:'block',
-            filter: talking ? 'brightness(1.05) saturate(1.1)' : 'brightness(1)',
-            transition:'filter .3s',
+        <img src={src} alt={id} style={{
+          width:'100%', height:'100%',
+          objectFit:'cover', objectPosition:pos, display:'block',
+          filter: talking ? 'brightness(1.05)' : 'brightness(1)',
+          transition:'filter .3s',
+        }}/>
+        {/* Lip-sync overlay */}
+        {vState==='speaking' && amp>0.06 && (
+          <div style={{
+            position:'absolute', bottom:'22%', left:'50%',
+            transform:'translateX(-50%)',
+            width:`${6+amp*20}px`, height:`${2+amp*9}px`,
+            borderRadius:'0 0 50% 50%',
+            background:'rgba(0,0,0,0.2)',
+            transition:'all .05s ease',
           }}/>
-          {/* Overlay bouche lip-sync */}
-          {vState==='speaking' && amp>0.06 && (
-            <div style={{
-              position:'absolute', bottom:'22%', left:'50%',
-              transform:'translateX(-50%)',
-              width:`${6+amp*20}px`, height:`${2+amp*9}px`,
-              borderRadius:'0 0 50% 50%',
-              background:'rgba(0,0,0,0.2)',
-              transition:'all .05s ease',
-            }}/>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Point statut */}
