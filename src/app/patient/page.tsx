@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import AvatarFace from '@/components/AvatarFace';
 
 const DARK  = { bg:'#07111F',s1:'#0D1B2E',s2:'#112138',border:'#1E3350',teal:'#00D7C8',purple:'#8B5CF6',mint:'#00E5A0',pink:'#EC4899',green:'#16A34A',text:'#E8F0FA',muted:'#5E7A96',urgent:'#EF4444',glass:'rgba(255,255,255,0.06)' };
 const LIGHT = { bg:'#EEF2F7',s1:'#FFFFFF',s2:'#F8FAFC',border:'#CBD5E1',teal:'#0891B2',purple:'#7C3AED',mint:'#059669',pink:'#DB2777',green:'#16A34A',text:'#0F1B2D',muted:'#64748B',urgent:'#DC2626',glass:'rgba(255,255,255,0.75)' };
@@ -807,7 +808,7 @@ export default function PatientPage() {
           <div style={{position:'absolute',width:240,height:240,borderRadius:'50%',background:`radial-gradient(circle,${agent.color}08 0%,transparent 60%)`}}/>
           <ECG color={agent.color} op={.15}/>
           <div style={{position:'relative',zIndex:2,animation:'float 4s ease-in-out infinite'}}>
-            <Avatar id={agent.id} size={220} talking={vState==='speaking'} color={agent.color} vState={vState} audioRef={audioRef}/>
+            <AvatarFace agentId={agent.id} imgSrc={AGENT_PHOTO[agent.id]||"/agents/houda.png"} imgPos={AGENT_POS[agent.id]||"center 15%"} color={agent.color} state={vState} audioRef={audioRef} size={220}/>
           </div>
         </div>
 
@@ -1224,13 +1225,14 @@ export default function PatientPage() {
         <div style={{padding:'16px 0 10px',display:'flex',flexDirection:'column',alignItems:'center',background:`radial-gradient(ellipse at center,${agent.color}07 0%,transparent 65%)`,flexShrink:0,position:'relative',minHeight:290}}>
           <ECG color={agent.color} op={.12}/>
           {/* ✅ Vraie photo de l'agent avec animations */}
-          <Avatar
-            id={agent.id}
-            size={220}
-            talking={vState==='speaking'}
+          <AvatarFace
+            agentId={agent.id}
+            imgSrc={AGENT_PHOTO[agent.id]||'/agents/houda.png'}
+            imgPos={AGENT_POS[agent.id]||'center 15%'}
             color={agent.color}
-            vState={vState}
+            state={vState}
             audioRef={audioRef}
+            size={220}
           />
           <div style={{marginTop:8,fontSize:12,color:agent.color,fontWeight:600,letterSpacing:'.02em'}}>
             {vState==='speaking'?`${agent.name} parle…`
