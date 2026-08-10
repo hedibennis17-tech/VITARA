@@ -273,6 +273,17 @@ function Avatar({ id, size=200, talking=false, color='#00D7C8', vState='idle', a
   );
 }
 
+function Bars({ active=false, color='#00D7C8', n=12 }:any) {
+  return <div style={{display:'flex',alignItems:'center',gap:2,height:20}}>
+    {Array.from({length:n}).map((_,i)=>(
+      <div key={i} style={{width:2,borderRadius:2,background:color,
+        height:active?`${6+Math.sin(i*0.7)*6}px`:'3px',
+        animation:active?`bar-wave 0.8s ease-in-out infinite`:'none',
+        animationDelay:`${i*.04}s`,opacity:active?1:.3}}/>
+    ))}
+  </div>;
+}
+
 function ECG({ color='#00D7C8', op=.2 }:any) {
   return <svg width="100%" height="56" viewBox="0 0 400 56" preserveAspectRatio="none" style={{position:'absolute',bottom:0,left:0,opacity:op,pointerEvents:'none'}}>
     <path d="M0 33 L62 33 L76 33 L86 4 L96 52 L106 33 L125 33 L145 15 L155 50 L165 33 L205 33 L222 8 L233 51 L243 33 L265 33 L290 33 L303 16 L313 50 L323 33 L350 33 L362 10 L372 52 L382 33 L400 33" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeDasharray="600" style={{animation:'ecg 3s linear infinite'}}/>
