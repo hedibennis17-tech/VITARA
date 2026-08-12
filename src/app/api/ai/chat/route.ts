@@ -141,6 +141,26 @@ export async function POST(req: NextRequest) {
           else if (/voiture|route|saaq/i.test(msg)) v='SAAQ';
           else if (/non|aucun|pas/i.test(msg)) v='none';
         }
+        else if (pendingField==='service') {
+          // Extraire le service depuis la réponse libre
+          const svcMap: [RegExp,string][] = [
+            [/prise\s+de\s+sang|analyse|labo|prélève/i,'prelevement'],
+            [/physio/i,'physiotherapie'],
+            [/médecin|famille|docteur/i,'medecin_famille'],
+            [/pédiatr|enfant|bébé/i,'pediatrie'],
+            [/urgence|urgent/i,'urgence'],
+            [/psycholog/i,'psychologie'],
+            [/nutri/i,'nutrition'],
+            [/prescription|ordonnance/i,'prescription'],
+          ];
+          for (const [re,svc] of svcMap) { if (re.test(msg)) { v=svc; break; } }
+        }
+        else if (pendingField==='has_requisition') {
+          if (/^(oui|yes|absolument|bien sûr|j'ai|effectivement)/i.test(msg)) v='oui';
+          else if (/^(non|no|pas|aucun|je n'ai pas)/i.test(msg)) v='non';
+          else if (msg.split(' ').length<=3) v=msg;
+        }
+        else if (pendingField==='preparation_info') { v=msg; }
         if (v) { const fu={[pendingField]:{value:v,status:'confirmed' as const}}; newState=applyUpdates(newState,fu as any); Object.assign(updates,fu); }
       }
     }

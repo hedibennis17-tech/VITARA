@@ -31,6 +31,9 @@ export interface VitaraState {
   // Accident
   accident_type:  Field;             // 'CNESST' | 'SAAQ' | 'IVAC' | 'none'
   claim_number:   Field;
+  // Prise de sang
+  has_requisition:  Field;  // 'oui' | 'non'
+  preparation_info: Field;  // consignes spéciales
   // Enfant (pédiatrie)
   child_name:     Field;
   child_dob:      Field;
@@ -51,6 +54,7 @@ export const EMPTY_STATE: VitaraState = {
   service:      F(), practitioner: F(),
   reason:       F(), body_part: F(), pain_scale: F(),
   accident_type:F(), claim_number: F(),
+  has_requisition: F(), preparation_info: F(),
   child_name:      F(), child_dob:       F(),
   child_temp:      F(), child_breathing: F(), child_diarrhea:  F(),
   child_vomiting:  F(), child_appearance:F(),
@@ -90,7 +94,7 @@ const SERVICE_KEYWORDS: Array<[RegExp, string]> = [
   [/psycholog|psy\b|mental|anxié/i,            'psychologie'],
   [/nutritio|diét/i,                            'nutrition'],
   [/ergo/i,                                     'ergotherapie'],
-  [/sang|labo|prélève/i,                        'prelevement'],
+  [/prise\s+de\s+sang|analyse|sang|labo|prélève|prelevement/i, 'prelevement'],
   [/urgence|urgent|aujourd.hui|ce\s+soir/i,    'urgence'],
   [/sans\s+rendez/i,                            'sans_rdv'],
   [/prescription|ordonnance|renouvelle/i,       'prescription'],
@@ -269,6 +273,38 @@ const GMF_LIST = Object.values(GMF_LOOKUP).filter((v,i,a)=>a.indexOf(v)===i).joi
 const PHYSIO_LIST = Object.values(PHYSIO_LOOKUP).filter((v,i,a)=>a.indexOf(v)===i).join(' · ');
 
 export function nextStep(s: VitaraState): Step {
+  // ── PRÉLÈVEMENT SANGUIN ─────────────────────────────────────────
+  if (s.service?.value === 'prelevement') {
+    if (!ok(s.full_name))
+      return { type:'ask', field:'full_name',
+        fr:'Pouvez-vous me confirmer votre nom complet ?',
+        en:'Can you confirm your full name?', ar:'ما اسمك الكامل؟' };
+    if (!ok(s.phone))
+      return { type:'ask', field:'phone',
+        fr:'Quel est votre numéro de téléphone ?',
+        en:'What is your phone number?', ar:'ما رقم هاتفك؟' };
+    if (!ok(s.email))
+      return { type:'ask', field:'email',
+        fr:'Quelle est votre adresse courriel ?',
+        en:'What is your email?', ar:'ما بريدك الإلكتروني؟' };
+    if (!ok(s.ramq))
+      return { type:'ask', field:'ramq',
+        fr:"Quel est votre numéro d'assurance maladie (RAMQ) ?",
+        en:'What is your health card number?', ar:'ما رقم بطاقة التأمين الصحي؟' };
+    if (!ok(s.has_requisition))
+      return { type:'ask', field:'has_requisition',
+        fr:"Avez-vous une requête ou une ordonnance médicale pour vos analyses ? (oui/non)",
+        en:'Do you have a medical requisition for your blood work?', ar:'هل لديك طلب طبي للتحاليل؟' };
+    if (!ok(s.preparation_info))
+      return { type:'ask', field:'preparation_info',
+        fr: s.has_requisition?.value === 'non'
+          ? "Pas de problème. Pouvez-vous me indiquer quel type d'analyse vous a été mentionné par votre médecin ?"
+          : "Votre requête comporte-t-elle des consignes particulières comme le jeûne ? (ex: à jeun depuis 8h, eau permise)",
+        en:'Does your requisition have special preparation instructions?', ar:'هل توجد تعليمات خاصة للتحضير؟' };
+    // Tout collecté → créneaux
+    return { type:'slots' };
+  }
+
   // ── PÉDIATRIE EN PREMIER (si service déjà détecté) ────────────
   // Quand le patient dit "Mon enfant a besoin..." → service=pediatrie
   // → demander l'enfant AVANT le parent
@@ -460,6 +496,8 @@ export function buildAck(field: keyof VitaraState, value: string, lang: string):
     pain_scale:`Je suis désolée d'entendre cela. Douleur ${value}/10 notée.`,
     accident_type:value==='CNESST'?'Accident de travail noté.':value==='SAAQ'?'Accident de route noté.':value==='none'?'Très bien.':'Noté.',
     claim_number:`Merci, numéro de dossier bien enregistré.`,
+    has_requisition:value==='non' ? "Pas de problème, nous pouvons continuer sans requête." : "Parfait, pensez à l'apporter le jour du rendez-vous.",
+    preparation_info:'Merci pour cette information.',
     child_name:`Merci beaucoup. J'ai bien noté le nom de votre enfant.`,
     child_dob:`Date de naissance notée, merci.`,
     child_temp:`Merci, j'ai bien noté la température.`,
