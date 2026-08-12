@@ -31,6 +31,14 @@ export interface VitaraState {
   // Accident
   accident_type:  Field;             // 'CNESST' | 'SAAQ' | 'IVAC' | 'none'
   claim_number:   Field;
+  // Physiothérapie & Ergothérapie
+  body_side:        Field;  // 'droit' | 'gauche' | 'les deux'
+  symptoms:         Field;  // douleur, raideur, faiblesse...
+  injury_onset:     Field;  // 'soudain' | 'progressif'
+  accident_date:    Field;
+  // Ergothérapie
+  daily_limitation: Field;  // quelle activité affectée
+  functional_limit: Field;  // limitations fonctionnelles
   // Prise de sang
   has_requisition:  Field;  // 'oui' | 'non'
   preparation_info: Field;  // consignes spéciales
@@ -54,6 +62,8 @@ export const EMPTY_STATE: VitaraState = {
   service:      F(), practitioner: F(),
   reason:       F(), body_part: F(), pain_scale: F(),
   accident_type:F(), claim_number: F(),
+  body_side: F(), symptoms: F(), injury_onset: F(), accident_date: F(),
+  daily_limitation: F(), functional_limit: F(),
   has_requisition: F(), preparation_info: F(),
   child_name:      F(), child_dob:       F(),
   child_temp:      F(), child_breathing: F(), child_diarrhea:  F(),
@@ -81,9 +91,17 @@ const GMF_LOOKUP: Record<string, string> = {
 };
 
 const PHYSIO_LOOKUP: Record<string, string> = {
+  // FR/EN
   'haider':   'Shaheer Haider, PT',
+  'shaheer':  'Shaheer Haider, PT',
   'khalil':   'Omar Khalil, PT',
+  'omar':     'Omar Khalil, PT',
   'tremblay': 'Sophie Tremblay, PT',
+  'sophie':   'Sophie Tremblay, PT',
+  // AR
+  'شهير':     'Shaheer Haider, PT',
+  'شاهر':     'Shaheer Haider, PT',
+  'خليل':     'Omar Khalil, PT',
 };
 
 const SERVICE_KEYWORDS: Array<[RegExp, string]> = [

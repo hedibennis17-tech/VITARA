@@ -161,6 +161,15 @@ export async function POST(req: NextRequest) {
           else if (msg.split(' ').length<=3) v=msg;
         }
         else if (pendingField==='preparation_info') { v=msg; }
+        else if (pendingField==='body_side') {
+          if (/droit|right|أيمن/i.test(msg)) v='droit';
+          else if (/gauche|left|أيسر/i.test(msg)) v='gauche';
+          else if (/deux|both|كلا/i.test(msg)) v='les deux';
+          else v=msg;
+        }
+        else if (pendingField==='injury_onset') { v=msg; }
+        else if (pendingField==='daily_limitation') { v=msg; }
+        else if (pendingField==='functional_limit') { v=msg; }
         if (v) { const fu={[pendingField]:{value:v,status:'confirmed' as const}}; newState=applyUpdates(newState,fu as any); Object.assign(updates,fu); }
       }
     }
