@@ -224,17 +224,21 @@ export function extractFromMessage(msg: string, state: VitaraState): Partial<Vit
     }
   }
 
-  // DATE — détecté avant pain_scale pour éviter confusion (ex: "10.10.2025" → pas douleur)
+  // DATE — ex: "10.10.2025" ne doit pas être parsé comme pain_scale
   const DATE_RE_INLINE = /\b\d{1,2}[.\/-]\d{1,2}[.\/-]\d{2,4}\b/;
-  const looksLikeDate = DATE_RE_INLINE.test(msg);
+  const looksLikeDate  = DATE_RE_INLINE.test(msg);
 
-  // child_dob extraction directe si message ressemble à une date
-  if (!ok(state.child_dob) && looksLikeDate) {
+  // TEMPÉRATURE — ex: "38.8", "39,5", "37.2°C" ne doit pas être parsé comme pain_scale
+  const TEMP_RE = /\b(3[6-9]|4[0-2])[.,]\d\b/;
+  const looksLikeTemp = TEMP_RE.test(msg);
+
+  // child_dob extraction si date détectée
+  if (!ok(state.child_dob) && looksLikeDate && !looksLikeTemp) {
     up.child_dob = F(msg.trim(), 'confirmed');
   }
 
-  // Intensité douleur 0-10 — seulement si pas une date
-  if (!ok(state.pain_scale) && !looksLikeDate) {
+  // Intensité douleur 0-10 — jamais si date ou température
+  if (!ok(state.pain_scale) && !looksLikeDate && !looksLikeTemp) {
     const ps = l.match(/\b(10|[0-9])\s*(?:\/\s*10|sur\s+10)?\b/);
     if (ps) up.pain_scale = F(ps[1], 'confirmed');
   }
@@ -391,57 +395,81 @@ export function nextStep(s: VitaraState): Step {
 // Fonction dédiée pédiatrie — appelée en priorité
 function nextStepPediatrie(s: VitaraState): Step {
   const prenom = s.child_name?.value?.split(' ')[0] || "votre enfant";
-  // 1. Infos enfant
+
+  // 1. Nom de l'enfant
   if (!ok(s.child_name))
     return { type:'ask', field:'child_name',
       fr:"Pour commencer, quel est le prénom et nom complet de votre enfant ?",
       en:"First, what is your child's full name?", ar:"ما اسم طفلك الكامل؟" };
+
+  // 2. Date de naissance
   if (!ok(s.child_dob))
     return { type:'ask', field:'child_dob',
-      fr:`Quelle est la date de naissance de ${prenom} ?`,
+      fr:`Quelle est la date de naissance de ${prenom} ? (ex: 15/03/2022)`,
       en:"What is your child's date of birth?", ar:"ما تاريخ ميلاد طفلك؟" };
-  // 2. Infos parent
-  if (!ok(s.full_name))
-    return { type:'ask', field:'full_name',
-      fr:"Merci. Et vous, quel est votre nom complet en tant que parent ou tuteur ?",
-      en:"And what is your full name as parent or guardian?", ar:"وما اسمك الكامل كولي أمر؟" };
+
+  // 3. Nom du PARENT — TOUJOURS demander même si dossier connu
+  //    (différencier enfant/parent explicitement)
+  if (!ok(s.full_name) || s.patient_type !== 'existing')
+    if (!ok(s.full_name))
+      return { type:'ask', field:'full_name',
+        fr:`Merci. Et vous, quel est votre nom complet en tant que parent ou tuteur de ${prenom} ?`,
+        en:"And your full name as parent or guardian?", ar:"وما اسمك الكامل كولي أمر؟" };
+
+  // 4. Téléphone
   if (!ok(s.phone))
     return { type:'ask', field:'phone',
       fr:"Quel est votre numéro de téléphone ?",
       en:"What is your phone number?", ar:"ما رقم هاتفك؟" };
+
+  // 5. Email
   if (!ok(s.email))
     return { type:'ask', field:'email',
       fr:"Quelle est votre adresse courriel ?",
       en:"What is your email?", ar:"ما بريدك الإلكتروني؟" };
+
+  // 6. RAMQ de l'enfant
   if (!ok(s.ramq))
     return { type:'ask', field:'ramq',
       fr:`Quel est le numéro de carte d'assurance maladie de ${prenom} ?`,
       en:"What is your child's health card number?", ar:"ما رقم بطاقة التأمين الصحي للطفل؟" };
-  // 3. Motif et diagnostic
+
+  // 7. Motif de consultation
   if (!ok(s.reason))
     return { type:'ask', field:'reason',
       fr:`Pour quelle raison consultez-vous pour ${prenom} aujourd'hui ?`,
       en:"What is the reason for the consultation?", ar:"ما سبب الاستشارة؟" };
+
+  // 8. Fièvre / température (toujours en pédiatrie)
   if (!ok(s.child_temp))
     return { type:'ask', field:'child_temp',
-      fr:`Est-ce que ${prenom} a de la fièvre ? Si oui, quelle est sa température ?`,
-      en:"Does your child have a fever? What is their temperature?", ar:"هل لدى طفلك حمى؟" };
+      fr:`Est-ce que ${prenom} a de la fièvre ? Si oui, quelle est sa température actuelle ?`,
+      en:"Does your child have a fever? What is their temperature?", ar:"هل لدى طفلك حمى؟ ما درجة حرارته؟" };
+
+  // 9. Respiration
   if (!ok(s.child_breathing))
     return { type:'ask', field:'child_breathing',
-      fr:`Comment respire ${prenom} ? Normalement, difficilement, rapidement ?`,
+      fr:`Comment respire ${prenom} ? Normalement, difficilement ou rapidement ?`,
       en:"How is your child breathing?", ar:"كيف يتنفس طفلك؟" };
+
+  // 10. Diarrhée
   if (!ok(s.child_diarrhea))
     return { type:'ask', field:'child_diarrhea',
       fr:`Est-ce que ${prenom} a des diarrhées ou des selles anormales ?`,
       en:"Does your child have diarrhea?", ar:"هل لدى طفلك إسهال؟" };
+
+  // 11. Vomissements
   if (!ok(s.child_vomiting))
     return { type:'ask', field:'child_vomiting',
       fr:`Y a-t-il des vomissements ? Depuis combien de temps ?`,
-      en:"Is there vomiting? For how long?", ar:"هل هناك قيء؟" };
+      en:"Is there vomiting? For how long?", ar:"هل هناك قيء؟ منذ متى؟" };
+
+  // 12. État général
   if (!ok(s.child_appearance))
     return { type:'ask', field:'child_appearance',
-      fr:`Comment est l'état général de ${prenom} ? Actif, somnolent, irritable ?`,
-      en:"How is your child's general appearance?", ar:"ما الحالة العامة لطفلك؟" };
+      fr:`Comment est l'état général de ${prenom} ? Est-il actif, somnolent ou irritable ?`,
+      en:"How is your child's general appearance? Active, sleepy, or irritable?", ar:"ما الحالة العامة لطفلك؟" };
+
   return { type:'slots' };
 }
 
@@ -529,7 +557,7 @@ export function buildAck(field: keyof VitaraState, value: string, lang: string):
     claim_number:`Merci, numéro de dossier bien enregistré.`,
     has_requisition:value==='non' ? "Pas de problème, nous pouvons continuer sans requête." : "Parfait, pensez à l'apporter le jour du rendez-vous.",
     preparation_info:'Merci pour cette information.',
-    child_name:`Merci beaucoup. J'ai bien noté le nom de votre enfant.`,
+    child_name:`Merci beaucoup, j'ai bien noté le nom de votre enfant.`,
     child_dob:`Date de naissance notée, merci.`,
     child_temp:`Merci, j'ai bien noté la température.`,
     child_breathing:`Merci pour cette précision.`,

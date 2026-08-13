@@ -128,7 +128,11 @@ export async function POST(req: NextRequest) {
         if      (pendingField==='full_name')    v = extractNameFromReply(msg);
         else if (pendingField==='reason'     && msg.split(' ').length<=15 && !/@/.test(msg)) v=msg;
         else if (pendingField==='body_part'  && msg.split(' ').length<=8)  v=msg;
-        else if (pendingField==='child_name' && msg.split(' ').length<=5 && !/\d{4,}/.test(msg)) v=msg;
+        else if (pendingField==='child_name' && msg.split(' ').length<=5 && !/\d{4,}/.test(msg)) {
+          v=msg;
+          // Supprimer toute extraction accidentelle de full_name (le parent n'a pas encore donné son nom)
+          delete (updates as any).full_name;
+        }
         else if (pendingField==='child_dob') {
           // Accepter: 10.10.2025, 10/10/2025, 10-10-2025, "10 octobre 2025", "01 janvier 1900"
           const MONTHS = 'janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre';
@@ -137,7 +141,13 @@ export async function POST(req: NextRequest) {
                        || /\d{4}/.test(msg);
           v = msg.trim(); // accepter quoi qu'il dise
         }
-        else if (pendingField==='child_temp') v=msg;
+        else if (pendingField==='child_temp') {
+          // Accepter: "38.8", "38,8", "oui 38.9", "39.5°C"
+          const tempMatch = msg.match(/(3[6-9]|4[0-2])[.,]\d/);
+          v = tempMatch ? tempMatch[0].replace(',','.') : msg;
+          // Annuler pain_scale extrait accidentellement (ex: "38.8" → "8")
+          delete (updates as any).pain_scale;
+        }
         else if (pendingField==='child_breathing') v=msg;
         else if (pendingField==='child_diarrhea') v=msg;
         else if (pendingField==='child_vomiting') v=msg;
