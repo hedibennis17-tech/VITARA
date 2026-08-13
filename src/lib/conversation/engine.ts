@@ -179,12 +179,16 @@ export function extractFromMessage(msg: string, state: VitaraState): Partial<Vit
     }
   }
 
-  // Médecin GMF
+  // Médecin GMF — toujours
   if (!ok(state.practitioner)) {
     for (const [key, name] of Object.entries(GMF_LOOKUP)) {
       if (l.includes(key)) { up.practitioner = F(name, 'confirmed'); break; }
     }
-    if (!up.practitioner) {
+    // PHYSIO/ERGO lookup SEULEMENT si le service le requiert
+    // Evite d'extraire "Omar Khalil PT" quand le patient donne le nom de son enfant "Omar"
+    const svc = state.service?.value || '';
+    const isPhysioErgo = svc === 'physiotherapie' || svc === 'ergotherapie';
+    if (!up.practitioner && isPhysioErgo) {
       for (const [key, name] of Object.entries(PHYSIO_LOOKUP)) {
         if (l.includes(key)) { up.practitioner = F(name, 'confirmed'); break; }
       }
@@ -220,8 +224,17 @@ export function extractFromMessage(msg: string, state: VitaraState): Partial<Vit
     }
   }
 
-  // Intensité douleur 0-10
-  if (!ok(state.pain_scale)) {
+  // DATE — détecté avant pain_scale pour éviter confusion (ex: "10.10.2025" → pas douleur)
+  const DATE_RE_INLINE = /\b\d{1,2}[.\/-]\d{1,2}[.\/-]\d{2,4}\b/;
+  const looksLikeDate = DATE_RE_INLINE.test(msg);
+
+  // child_dob extraction directe si message ressemble à une date
+  if (!ok(state.child_dob) && looksLikeDate) {
+    up.child_dob = F(msg.trim(), 'confirmed');
+  }
+
+  // Intensité douleur 0-10 — seulement si pas une date
+  if (!ok(state.pain_scale) && !looksLikeDate) {
     const ps = l.match(/\b(10|[0-9])\s*(?:\/\s*10|sur\s+10)?\b/);
     if (ps) up.pain_scale = F(ps[1], 'confirmed');
   }

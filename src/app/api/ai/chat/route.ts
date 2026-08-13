@@ -129,7 +129,14 @@ export async function POST(req: NextRequest) {
         else if (pendingField==='reason'     && msg.split(' ').length<=15 && !/@/.test(msg)) v=msg;
         else if (pendingField==='body_part'  && msg.split(' ').length<=8)  v=msg;
         else if (pendingField==='child_name' && msg.split(' ').length<=5 && !/\d{4,}/.test(msg)) v=msg;
-        else if (pendingField==='child_dob') { const d=msg.match(/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/) || msg.match(/\d{4}/); if(d) v=msg; else v=msg; }
+        else if (pendingField==='child_dob') {
+          // Accepter: 10.10.2025, 10/10/2025, 10-10-2025, "10 octobre 2025", "01 janvier 1900"
+          const MONTHS = 'janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre';
+          const hasDate = /\d{1,2}[.\/-]\d{1,2}[.\/-]\d{2,4}/.test(msg)
+                       || new RegExp('\\d{1,2}\\s+('+MONTHS+')', 'i').test(msg)
+                       || /\d{4}/.test(msg);
+          v = msg.trim(); // accepter quoi qu'il dise
+        }
         else if (pendingField==='child_temp') v=msg;
         else if (pendingField==='child_breathing') v=msg;
         else if (pendingField==='child_diarrhea') v=msg;
@@ -193,6 +200,16 @@ export async function POST(req: NextRequest) {
 
     const ack=justField?buildAck(justField,justVal,language):'';
     let question=language==='en'?(step as any).en:language==='ar'?(step as any).ar:(step as any).fr;
+    // Greeting à la Clinique au premier tour (service confirmé, aucun nom encore)
+    const isFirstTurn = justField === 'service' && !state.full_name?.value && !state.child_name?.value;
+    if (isFirstTurn) {
+      const greet = language==='ar'
+        ? 'أهلاً وسهلاً بكم في عيادة جوليبورغ الطبية في لافال! '
+        : language==='en'
+        ? 'Welcome to JOLIBOURG Medical Clinic in Laval! '
+        : 'Bonjour et bienvenue à la Clinique Médicale JOLIBOURG de Laval ! ';
+      question = greet + question;
+    }
     if (phoneNew&&newState.full_name?.value) question=`Rebonjour ${newState.full_name.value.split(' ')[0]}! J'ai retrouvé votre dossier. ${question}`;
     const speak=[ack,question].filter(Boolean).join(' ');
 
