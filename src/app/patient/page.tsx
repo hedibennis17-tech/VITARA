@@ -20,7 +20,7 @@ const SERVICES_HOME = [
   { id:'rdv',            title:'Rendez-vous',          sub:'Prendre ou annuler',                  img:'/services/rdv.jpg',           color:'#00D7C8', urgent:false, msg:"Je voudrais prendre un rendez-vous",                                 full:false },
   { id:'cnesst',         title:'Accident de travail',  sub:'CNESST · SAAQ',                       img:'/services/cnesst.jpg',        color:'#F9A826', urgent:false, msg:"J'ai eu un accident de travail, j'ai besoin de physiothérapie CNESST", full:false },
   { id:'physio',         title:'Physiothérapie',       sub:'Réadaptation · Sport',                img:'/services/physio.jpg',        color:'#00E5A0', urgent:false, msg:"J'ai besoin de physiothérapie",                                      full:false },
-  { id:'medecins',       title:'Médecins de famille',  sub:'9 médecins GMF disponibles',          img:'/services/medecins.jpg',      color:'#8B5CF6', urgent:false, msg:"Je veux consulter un médecin de famille",                            full:true  },
+  { id:'medecins',       title:'Médecins de famille',  sub:'9 médecins GMF disponibles',          img:'/services/medecins.jpg',      color:'#8B5CF6', urgent:false, msg:"Je veux consulter un médecin de famille",                            full:false },
 ];
 
 // Compatibilité avec les écrans Services et Messages rapides
