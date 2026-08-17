@@ -14,12 +14,13 @@ const AGENTS = [
 
 // ── SERVICES HOME — vraies images par rubrique ───────────────
 const SERVICES_HOME = [
-  { id:'urgences',  title:'Urgences',            sub:'Consultation urgente · Même jour',   img:'/services/urgences.png',  color:'#EF4444', urgent:true,  msg:"J'ai besoin d'une consultation urgente aujourd'hui, c'est important",                                          full:true  },
-  { id:'pediatrie', title:'Pédiatrie',            sub:'Soins pour enfants',        img:'/services/pediatrie.jpg', color:'#EC4899', urgent:false, msg:"Mon enfant a besoin de soins médicaux",                              full:false },
-  { id:'rdv',       title:'Rendez-vous',          sub:'Prendre ou annuler',        img:'/services/rdv.jpg',       color:'#00D7C8', urgent:false, msg:"Je voudrais prendre un rendez-vous",                                 full:false },
-  { id:'cnesst',    title:'Accident de travail',  sub:'CNESST · SAAQ',             img:'/services/cnesst.jpg',    color:'#F9A826', urgent:false, msg:"J'ai eu un accident de travail, j'ai besoin de physiothérapie CNESST", full:false },
-  { id:'physio',    title:'Physiothérapie',       sub:'Réadaptation · Sport',      img:'/services/physio.jpg',    color:'#00E5A0', urgent:false, msg:"J'ai besoin de physiothérapie",                                      full:false },
-  { id:'medecins',  title:'Médecins de famille',  sub:'9 médecins GMF disponibles',img:'/services/medecins.jpg', color:'#8B5CF6', urgent:false, msg:"Je veux consulter un médecin de famille",                            full:true  },
+  { id:'urgences',       title:'Urgences',            sub:'Consultation urgente · Même jour',    img:'/services/urgences.png',      color:'#EF4444', urgent:true,  msg:"J'ai besoin d'une consultation urgente aujourd'hui, c'est important",                                          full:true  },
+  { id:'pediatrie',      title:'Pédiatrie',            sub:'Soins pour enfants',                  img:'/services/pediatrie.jpg',     color:'#EC4899', urgent:false, msg:"Mon enfant a besoin de soins médicaux",                              full:false },
+  { id:'prise-de-sang',  title:'Prise de sang',        sub:'Ordonnance · Laboratoire · 15 min',   img:'/services/prise-de-sang.png', color:'#E53935', urgent:false, msg:"Je veux faire une prise de sang",                                    full:false },
+  { id:'rdv',            title:'Rendez-vous',          sub:'Prendre ou annuler',                  img:'/services/rdv.jpg',           color:'#00D7C8', urgent:false, msg:"Je voudrais prendre un rendez-vous",                                 full:false },
+  { id:'cnesst',         title:'Accident de travail',  sub:'CNESST · SAAQ',                       img:'/services/cnesst.jpg',        color:'#F9A826', urgent:false, msg:"J'ai eu un accident de travail, j'ai besoin de physiothérapie CNESST", full:false },
+  { id:'physio',         title:'Physiothérapie',       sub:'Réadaptation · Sport',                img:'/services/physio.jpg',        color:'#00E5A0', urgent:false, msg:"J'ai besoin de physiothérapie",                                      full:false },
+  { id:'medecins',       title:'Médecins de famille',  sub:'9 médecins GMF disponibles',          img:'/services/medecins.jpg',      color:'#8B5CF6', urgent:false, msg:"Je veux consulter un médecin de famille",                            full:true  },
 ];
 
 // Compatibilité avec les écrans Services et Messages rapides
