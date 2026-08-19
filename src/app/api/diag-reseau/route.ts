@@ -23,7 +23,7 @@ export async function GET() {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method:'POST', signal:AbortSignal.timeout(8000),
         headers:{'Content-Type':'application/json','Authorization':`Bearer ${process.env.GROQ_API_KEY}`},
-        body:JSON.stringify({model:'llama-3.1-8b-instant',max_tokens:5,messages:[{role:'user',content:'ok'}]}),
+        body:JSON.stringify({model:'llama-3.3-70b-versatile',max_tokens:5,messages:[{role:'user',content:'ok'}]}),
       });
       r.groq = { status:res.ok?'✅ OK':'❌ Erreur', latency_ms:Date.now()-t, http:res.status };
     } catch(e:any) { r.groq = { status:'❌ TIMEOUT', error:e.message }; }
