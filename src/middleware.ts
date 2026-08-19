@@ -5,12 +5,12 @@ import { verifyAccessToken, extractBearerToken } from '@/lib/auth/jwt';
 const PUB_API  = [
   '/api/auth/login', '/api/auth/register', '/api/auth/refresh', '/api/auth/logout',
   '/api/ai/chat', '/api/diagnostic', '/api/voice',
-  '/api/debug', '/api/workflow-debug', '/api/patients', '/api/db-setup', '/api/conversations', '/api/chat-debug', '/api/status', '/api/diag-admin', '/api/diag-avatar',
+  '/api/debug', '/api/workflow-debug', '/api/patients', '/api/db-setup', '/api/conversations', '/api/chat-debug', '/api/status', '/api/diag-admin', '/api/diag-reseau', '/api/diag-avatar',
 ];
 const PUB_PAGE = [
   '/login', '/register',
   '/patient',        // App patient — toujours publique
-  '/patient-portal', '/diag', '/diag-visual', // Portail patient — toujours public
+  '/patient-portal', '/diag', '/diag-visual', '/diag-reseau', // Portail patient — toujours public
   '/_next', '/favicon',
 ];
 

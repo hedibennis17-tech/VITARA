@@ -509,8 +509,9 @@ export function extractNameFromReply(msg: string): string | null {
   // Ignorer si trop long (> 5 mots = probablement une phrase)
   const words = t.split(/\s+/).filter(w => w.length > 0);
   if (words.length > 5) return null;
-  // Ignorer si commence par "oui", "non", "je", etc.
-  if (/^(oui|non|je|j'|yes|no|okay|ok|peut)/i.test(t)) return null;
+  // Blacklist — mots qui ne sont PAS des noms de personnes
+  const NOT_A_NAME = /^(oui|non|je|j'|yes|no|okay|ok|peut|nouveau|nouvelle|patient|patiente|déjà|deja|existant|existante|bonjour|bonsoir|salut|merci|svp|stp|aide|aidez|urgent|urgence|physio|prise|sang|dossier|chez|vous|moi|nous)$/i;
+  if (NOT_A_NAME.test(t) || words.every(w => NOT_A_NAME.test(w))) return null;
   
   // Capitaliser chaque mot
   const name = words
