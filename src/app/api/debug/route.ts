@@ -4,7 +4,7 @@ import { buildSystemPrompt, retrieveContext } from '@/lib/knowledge/rag';
 
 export const maxDuration = 60; // 60s pour les 3 tests séquentiels
 
-const MODEL = 'llama-3.3-70b-versatile';
+const MODEL = 'llama3-8b-8192';
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 async function groqCall(apiKey: string, messages: any[], system: string, label: string) {
