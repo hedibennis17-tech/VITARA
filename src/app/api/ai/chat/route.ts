@@ -14,7 +14,14 @@ async function getPool() {
   if (!DB) return null;
   if (!_pool) {
     const { Pool } = await import('pg');
-    _pool = new Pool({ connectionString: DB, ssl: { rejectUnauthorized: false }, max: 3 });
+    _pool = new Pool({
+      connectionString: DB,
+      ssl: { rejectUnauthorized: false },
+      max: 3,
+      connectionTimeoutMillis: 8000,  // 8s pour cold start Neon
+      idleTimeoutMillis: 30000,
+      query_timeout: 5000,
+    });
   }
   return _pool;
 }
@@ -66,10 +73,11 @@ async function loadProfile(phone: string): Promise<Partial<VitaraState>> {
   try {
     const pool = await getPool();
     if (!pool) return {};
-    const r = await pool.query(
-      'SELECT full_name,email,ramq,family_doctor FROM patients WHERE phone=$1 LIMIT 1',
-      [phone.replace(/\D/g,'')]
-    );
+    // Timeout 4s max pour loadProfile — évite Erreur réseau sur cold start
+    const r = await Promise.race([
+      pool.query('SELECT full_name,email,ramq,family_doctor FROM patients WHERE phone=$1 LIMIT 1', [phone.replace(/\D/g,'')]),
+      new Promise<never>((_,rej)=>setTimeout(()=>rej(new Error('loadProfile timeout')),4000)),
+    ]) as any;
     if (!r.rows.length) return {};
     const p = r.rows[0];
     const out: Partial<VitaraState> = {};

@@ -25,7 +25,13 @@ export async function GET() {
         headers:{'Content-Type':'application/json','Authorization':`Bearer ${process.env.GROQ_API_KEY}`},
         body:JSON.stringify({model:'llama-3.3-70b-versatile',max_tokens:5,messages:[{role:'user',content:'ok'}]}),
       });
-      r.groq = { status:res.ok?'✅ OK':'❌ Erreur', latency_ms:Date.now()-t, http:res.status };
+      const d = await res.json() as any;
+      r.groq = {
+        status: res.ok?'✅ OK':'❌ Erreur',
+        latency_ms: Date.now()-t, http: res.status,
+        error_detail: res.ok ? undefined : (d?.error?.message || JSON.stringify(d)).slice(0,120),
+        key_prefix: process.env.GROQ_API_KEY?.slice(0,12)+'...',
+      };
     } catch(e:any) { r.groq = { status:'❌ TIMEOUT', error:e.message }; }
   } else { r.groq = '❌ Clé manquante'; }
 
@@ -64,6 +70,7 @@ export async function GET() {
   if (r.elevenlabs?.warning)                 issues.push(r.elevenlabs.warning);
   if (!r.chat_api?.status?.startsWith('✅')) issues.push(`Chat: ${r.chat_api?.error||'timeout'}`);
 
+  if ((r.db?.latency_ms||0) > 500) issues.push(`⚠️ DB lente (${r.db.latency_ms}ms) — Neon cold start → peut causer Erreur réseau`);
   r.DIAGNOSTIC = issues.length===0 ? '✅ TOUT OK' : issues;
   r.CAUSE_ERREUR_RESEAU = !r.db?.status?.startsWith('✅')
     ? '→ DB Neon cold-start (première connexion lente ~3s) → saveAsync timeout → erreur retournée'
